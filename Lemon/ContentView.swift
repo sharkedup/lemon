@@ -32,7 +32,7 @@ struct LemonShape: Shape {
     }
 }
 
-enum DanceDirection: CaseIterable {
+enum DanceDirection: CaseIterable, Equatable {
     case up, down, left, right
 
     var symbolName: String {
@@ -100,6 +100,11 @@ enum DanceDirection: CaseIterable {
     }
 }
 
+enum InputAction: Equatable {
+    case direction(DanceDirection)
+    case twirl
+}
+
 struct ContentView: View {
     @State private var isAwake = false
     @State private var moveOffset: CGSize = .zero
@@ -113,12 +118,24 @@ struct ContentView: View {
     @State private var rightLegOffset: CGSize = .zero
 
     @State private var twirlRotation: Double = 0
-    @State private var isTwirling = false
+    @State private var isBusy = false
     @State private var lightsLit = false
+
+    @State private var inputHistory: [InputAction] = []
+    @State private var showSpecialBanner = false
 
     private let synth = ToneSynth()
 
     private let twirlTune: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 1046.50]
+
+    private let comboSequence: [InputAction] = [
+        .direction(.up), .direction(.up),
+        .direction(.down), .direction(.down),
+        .direction(.right), .direction(.right),
+        .twirl
+    ]
+
+    private let specialTune: [Double] = [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50, 1318.51]
 
     var body: some View {
         ZStack {
@@ -137,6 +154,23 @@ struct ContentView: View {
                             guard !isAwake else { return }
                             wake()
                         }
+
+                    if showSpecialBanner {
+                        Text("🍋 LEMON POWER! 🍋")
+                            .font(.title2.weight(.heavy))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 1.0, green: 0.4, blue: 0.6),
+                                        Color(red: 0.6, green: 0.4, blue: 1.0)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .offset(y: -210)
+                            .transition(.scale.combined(with: .opacity))
+                    }
                 }
 
                 Text(isAwake ? "Lemon" : "Tap to wake up")
@@ -336,7 +370,7 @@ struct ContentView: View {
                 )
         }
         .buttonStyle(.plain)
-        .disabled(isTwirling)
+        .disabled(isBusy)
     }
 
     private func wake() {
@@ -351,6 +385,14 @@ struct ContentView: View {
     }
 
     private func dance(_ direction: DanceDirection) {
+        guard !isBusy else { return }
+
+        if recordInput(.direction(direction)) {
+            performSpecialMove()
+            return
+        }
+
+        isBusy = true
         let arms = direction.armAngles
         let legs = direction.legOffsets
 
@@ -366,6 +408,7 @@ struct ContentView: View {
         synth.play(frequency: direction.frequency)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            isBusy = false
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 moveOffset = .zero
                 moveRotation = 0
@@ -379,9 +422,14 @@ struct ContentView: View {
     }
 
     private func twirl() {
-        guard !isTwirling else { return }
-        isTwirling = true
+        guard !isBusy else { return }
 
+        if recordInput(.twirl) {
+            performSpecialMove()
+            return
+        }
+
+        isBusy = true
         withAnimation(.easeInOut(duration: 1.2)) {
             twirlRotation += 720
             leftArmAngle = -150
@@ -400,7 +448,70 @@ struct ContentView: View {
                 leftArmAngle = -20
                 rightArmAngle = 20
             }
-            isTwirling = false
+            isBusy = false
+        }
+    }
+
+    /// Appends to the rolling input buffer and reports whether it now completes the combo.
+    private func recordInput(_ action: InputAction) -> Bool {
+        inputHistory.append(action)
+        if inputHistory.count > comboSequence.count {
+            inputHistory.removeFirst(inputHistory.count - comboSequence.count)
+        }
+        if inputHistory == comboSequence {
+            inputHistory.removeAll()
+            return true
+        }
+        return false
+    }
+
+    private func performSpecialMove() {
+        isBusy = true
+        let duration = 2.2
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showSpecialBanner = true
+        }
+        withAnimation(.interpolatingSpring(stiffness: 55, damping: 6)) {
+            twirlRotation += 1080
+            moveScale = CGSize(width: 1.3, height: 1.3)
+        }
+        withAnimation(.easeInOut(duration: 0.35).delay(duration - 0.35)) {
+            moveScale = CGSize(width: 1, height: 1)
+        }
+        lightsLit.toggle()
+
+        let keyframes: [(left: Double, right: Double, legs: Bool)] = [
+            (-160, 160, true), (-40, 40, false), (-160, 160, true), (-40, 40, false), (-20, 20, true)
+        ]
+        for (i, keyframe) in keyframes.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.35) {
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.4)) {
+                    leftArmAngle = keyframe.left
+                    rightArmAngle = keyframe.right
+                    leftLegOffset = keyframe.legs ? CGSize(width: -14, height: -8) : CGSize(width: 14, height: -8)
+                    rightLegOffset = keyframe.legs ? CGSize(width: 14, height: -8) : CGSize(width: -14, height: -8)
+                }
+            }
+        }
+
+        for (i, frequency) in specialTune.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.13) {
+                synth.play(frequency: frequency, duration: 0.15)
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                leftArmAngle = -20
+                rightArmAngle = 20
+                leftLegOffset = .zero
+                rightLegOffset = .zero
+            }
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showSpecialBanner = false
+            }
+            isBusy = false
         }
     }
 }
