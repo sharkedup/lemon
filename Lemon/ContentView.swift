@@ -78,6 +78,26 @@ enum DanceDirection: CaseIterable {
         case .left, .right: return CGSize(width: 1, height: 1)
         }
     }
+
+    /// Shoulder-pivot rotation for the (left, right) arms, in degrees. 0 = hanging straight down.
+    var armAngles: (left: Double, right: Double) {
+        switch self {
+        case .up: return (-155, 155)
+        case .down: return (-35, 35)
+        case .left: return (-85, 55)
+        case .right: return (-55, 85)
+        }
+    }
+
+    /// Hip-pivot offset for the (left, right) legs.
+    var legOffsets: (left: CGSize, right: CGSize) {
+        switch self {
+        case .up: return (CGSize(width: 0, height: -12), CGSize(width: 0, height: -12))
+        case .down: return (CGSize(width: -6, height: 6), CGSize(width: 6, height: 6))
+        case .left: return (CGSize(width: -18, height: -4), CGSize(width: 4, height: 0))
+        case .right: return (CGSize(width: -4, height: 0), CGSize(width: 18, height: -4))
+        }
+    }
 }
 
 struct ContentView: View {
@@ -86,6 +106,11 @@ struct ContentView: View {
     @State private var moveRotation: Double = 0
     @State private var moveScale: CGSize = CGSize(width: 1, height: 1)
     @State private var wakePulse: CGFloat = 1
+
+    @State private var leftArmAngle: Double = -20
+    @State private var rightArmAngle: Double = 20
+    @State private var leftLegOffset: CGSize = .zero
+    @State private var rightLegOffset: CGSize = .zero
 
     private let synth = ToneSynth()
 
@@ -152,6 +177,7 @@ struct ContentView: View {
                 .rotationEffect(.degrees(-30))
                 .offset(x: 20, y: -118)
 
+            arms
             legs
         }
         .offset(moveOffset)
@@ -198,16 +224,32 @@ struct ContentView: View {
         }
     }
 
-    private var legs: some View {
-        HStack(spacing: 26) {
+    private var arms: some View {
+        ZStack {
             Capsule()
                 .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
-                .frame(width: 10, height: 26)
+                .frame(width: 12, height: 56)
+                .rotationEffect(.degrees(leftArmAngle), anchor: .top)
+                .offset(x: -118, y: -8)
             Capsule()
                 .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
-                .frame(width: 10, height: 26)
+                .frame(width: 12, height: 56)
+                .rotationEffect(.degrees(rightArmAngle), anchor: .top)
+                .offset(x: 118, y: -8)
         }
-        .offset(y: 105)
+    }
+
+    private var legs: some View {
+        ZStack {
+            Capsule()
+                .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
+                .frame(width: 10, height: 26)
+                .offset(x: -23 + leftLegOffset.width, y: 105 + leftLegOffset.height)
+            Capsule()
+                .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
+                .frame(width: 10, height: 26)
+                .offset(x: 23 + rightLegOffset.width, y: 105 + rightLegOffset.height)
+        }
     }
 
     private var dpad: some View {
@@ -245,10 +287,17 @@ struct ContentView: View {
     }
 
     private func dance(_ direction: DanceDirection) {
+        let arms = direction.armAngles
+        let legs = direction.legOffsets
+
         withAnimation(.spring(response: 0.22, dampingFraction: 0.45)) {
             moveOffset = direction.offset
             moveRotation = direction.rotation
             moveScale = direction.squash
+            leftArmAngle = arms.left
+            rightArmAngle = arms.right
+            leftLegOffset = legs.left
+            rightLegOffset = legs.right
         }
         synth.play(frequency: direction.frequency)
 
@@ -257,6 +306,10 @@ struct ContentView: View {
                 moveOffset = .zero
                 moveRotation = 0
                 moveScale = CGSize(width: 1, height: 1)
+                leftArmAngle = -20
+                rightArmAngle = 20
+                leftLegOffset = .zero
+                rightLegOffset = .zero
             }
         }
     }
