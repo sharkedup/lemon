@@ -112,7 +112,13 @@ struct ContentView: View {
     @State private var leftLegOffset: CGSize = .zero
     @State private var rightLegOffset: CGSize = .zero
 
+    @State private var twirlRotation: Double = 0
+    @State private var isTwirling = false
+    @State private var lightsLit = false
+
     private let synth = ToneSynth()
+
+    private let twirlTune: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 1046.50]
 
     var body: some View {
         ZStack {
@@ -122,12 +128,16 @@ struct ContentView: View {
             VStack(spacing: 40) {
                 Spacer()
 
-                lemonCharacter
-                    .scaleEffect(wakePulse)
-                    .onTapGesture {
-                        guard !isAwake else { return }
-                        wake()
-                    }
+                ZStack {
+                    partyLights
+
+                    lemonCharacter
+                        .scaleEffect(wakePulse)
+                        .onTapGesture {
+                            guard !isAwake else { return }
+                            wake()
+                        }
+                }
 
                 Text(isAwake ? "Lemon" : "Tap to wake up")
                     .font(.title2.weight(.semibold))
@@ -136,9 +146,12 @@ struct ContentView: View {
                 Spacer()
 
                 if isAwake {
-                    dpad
-                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                        .padding(.bottom, 40)
+                    VStack(spacing: 24) {
+                        dpad
+                        twirlButton
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    .padding(.bottom, 40)
                 }
             }
         }
@@ -181,8 +194,33 @@ struct ContentView: View {
             legs
         }
         .offset(moveOffset)
-        .rotationEffect(.degrees(moveRotation))
+        .rotationEffect(.degrees(moveRotation + twirlRotation))
         .scaleEffect(moveScale)
+    }
+
+    private var partyLights: some View {
+        ZStack {
+            ForEach(0..<12, id: \.self) { i in
+                Circle()
+                    .fill(Color(hue: Double(i) / 12.0, saturation: 0.85, brightness: 0.95))
+                    .frame(width: 16, height: 16)
+                    .offset(lightOffset(for: i))
+                    .scaleEffect(lightsLit ? 1 : 0.2)
+                    .opacity(lightsLit ? 1 : 0)
+                    .animation(
+                        .easeInOut(duration: 0.35)
+                            .repeatCount(6, autoreverses: true)
+                            .delay(Double(i) * 0.04),
+                        value: lightsLit
+                    )
+            }
+        }
+    }
+
+    private func lightOffset(for index: Int) -> CGSize {
+        let angle = Double(index) / 12.0 * 2 * .pi
+        let radius = 175.0
+        return CGSize(width: cos(angle) * radius, height: sin(angle) * radius)
     }
 
     private var face: some View {
@@ -275,6 +313,32 @@ struct ContentView: View {
         .buttonStyle(.plain)
     }
 
+    private var twirlButton: some View {
+        Button {
+            twirl()
+        } label: {
+            Label("Twirl!", systemImage: "sparkles")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 28)
+                .padding(.vertical, 14)
+                .background(
+                    Capsule().fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.4, blue: 0.6),
+                                Color(red: 0.6, green: 0.4, blue: 1.0)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(isTwirling)
+    }
+
     private func wake() {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) {
             isAwake = true
@@ -311,6 +375,32 @@ struct ContentView: View {
                 leftLegOffset = .zero
                 rightLegOffset = .zero
             }
+        }
+    }
+
+    private func twirl() {
+        guard !isTwirling else { return }
+        isTwirling = true
+
+        withAnimation(.easeInOut(duration: 1.2)) {
+            twirlRotation += 720
+            leftArmAngle = -150
+            rightArmAngle = 150
+        }
+        lightsLit.toggle()
+
+        for (i, frequency) in twirlTune.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.15) {
+                synth.play(frequency: frequency, duration: 0.17)
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                leftArmAngle = -20
+                rightArmAngle = 20
+            }
+            isTwirling = false
         }
     }
 }
