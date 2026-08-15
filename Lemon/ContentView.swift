@@ -181,7 +181,7 @@ enum Fruit: Equatable {
         switch self {
         case .lemon: return "🍋 LEMON POWER! 🍋"
         case .clementine: return "🍊 CLEMENTINE TIME! 🍊"
-        case .lime: return "🍏 LIME TIME! 🍏"
+        case .lime: return "🍋‍🟩 LIME TIME! 🍋‍🟩"
         case .lemonadePitcher: return "🥤 LEMONADE TIME! 🥤"
         }
     }
