@@ -122,6 +122,23 @@ struct PitcherShape: Shape {
     }
 }
 
+/// Short melodies for the special moves, as note frequencies in Hz.
+/// Played one note at a time through `ToneSynth`'s sine wave.
+enum Tune {
+    /// Rising "ta-daa!" fanfare — LEMON POWER.
+    static let lemonPower: [Double] = [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50, 1318.51]
+    /// "Twinkle, Twinkle, Little Star" — Clementine.
+    static let clementine: [Double] = [523.25, 523.25, 783.99, 783.99, 880.00, 880.00, 783.99]
+    /// "Frere Jacques" — Lime.
+    static let lime: [Double] = [523.25, 587.33, 659.25, 523.25, 523.25, 587.33, 659.25, 523.25]
+    /// "Mary Had a Little Lamb" — Lemonade Pitcher.
+    static let lemonadePitcher: [Double] = [659.25, 587.33, 523.25, 587.33, 659.25, 659.25, 659.25]
+    /// Big slow C-G-C-E strongman fanfare — STRONG LEMON flex.
+    static let flex: [Double] = [261.63, 392.00, 523.25, 659.25]
+    /// Sparkle run for the plain twirl button.
+    static let twirl: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 1046.50]
+}
+
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
 
@@ -150,12 +167,13 @@ enum Fruit: Equatable {
         }
     }
 
-    var announcement: String? {
+    /// Each form gets its own melody so the combos are told apart by ear.
+    var tune: [Double] {
         switch self {
-        case .lemon: return nil
-        case .clementine: return "Clementine time!"
-        case .lime: return "Lime time!"
-        case .lemonadePitcher: return "Lemonade time!"
+        case .lemon: return Tune.lemonPower
+        case .clementine: return Tune.clementine
+        case .lime: return Tune.lime
+        case .lemonadePitcher: return Tune.lemonadePitcher
         }
     }
 
@@ -205,10 +223,6 @@ struct ContentView: View {
     @State private var currentForm: Fruit = .lemon
 
     private let synth = ToneSynth()
-    private let speaker = Speaker()
-
-    private let twirlTune: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 1046.50]
-    private let specialTune: [Double] = [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50, 1318.51]
 
     private let combos: [Combo] = [
         Combo(sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.right), .direction(.right), .twirl], kind: .lemonPower),
@@ -556,6 +570,15 @@ struct ContentView: View {
         .disabled(isBusy)
     }
 
+    /// Plays a melody one note at a time, `step` seconds apart.
+    private func playTune(_ tune: [Double], step: Double = 0.15, duration: Double = 0.17) {
+        for (i, frequency) in tune.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * step) {
+                synth.play(frequency: frequency, duration: duration)
+            }
+        }
+    }
+
     private func wake() {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) {
             isAwake = true
@@ -620,11 +643,7 @@ struct ContentView: View {
         }
         lightsLit.toggle()
 
-        for (i, frequency) in twirlTune.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.15) {
-                synth.play(frequency: frequency, duration: 0.17)
-            }
-        }
+        playTune(Tune.twirl, step: 0.15, duration: 0.17)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
@@ -692,11 +711,7 @@ struct ContentView: View {
             }
         }
 
-        for (i, frequency) in specialTune.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.13) {
-                synth.play(frequency: frequency, duration: 0.15)
-            }
-        }
+        playTune(Fruit.lemon.tune, step: 0.13, duration: 0.15)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
@@ -734,17 +749,7 @@ struct ContentView: View {
         }
         lightsLit.toggle()
 
-        for (i, frequency) in twirlTune.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.13) {
-                synth.play(frequency: frequency, duration: 0.15)
-            }
-        }
-
-        if let phrase = fruit.announcement {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                speaker.speak(phrase)
-            }
-        }
+        playTune(fruit.tune, step: 0.16, duration: 0.18)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
@@ -778,10 +783,7 @@ struct ContentView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.4).delay(0.5)) {
             moveScale = CGSize(width: 1, height: 1)
         }
-        synth.play(frequency: 220, duration: 0.3)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            synth.play(frequency: 165, duration: 0.35)
-        }
+        playTune(Tune.flex, step: 0.3, duration: 0.32)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
