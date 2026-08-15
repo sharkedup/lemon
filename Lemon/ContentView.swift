@@ -201,7 +201,10 @@ enum Fruit: Equatable {
         case .lime:
             return (Color(red: 0.78, green: 0.92, blue: 0.42), Color(red: 0.55, green: 0.78, blue: 0.22), Color(red: 0.32, green: 0.5, blue: 0.1))
         case .lemonadePitcher:
-            return (Color(red: 0.97, green: 0.92, blue: 0.7), Color(red: 0.9, green: 0.78, blue: 0.35), Color(red: 0.7, green: 0.55, blue: 0.15))
+            // Cool, pale tones for the glass sheen, handle, rim and limbs —
+            // the warm lemonade color comes from `pitcherGlassBody`'s liquid
+            // fill instead, so the vessel itself reads as clear glass.
+            return (Color(red: 0.93, green: 0.97, blue: 0.99), Color(red: 0.80, green: 0.90, blue: 0.94), Color(red: 0.53, green: 0.64, blue: 0.68))
         }
     }
 
@@ -348,21 +351,25 @@ struct ContentView: View {
                 pitcherHandle
             }
 
-            bodyShape
-                .fill(
-                    RadialGradient(
-                        colors: [colors.light, colors.dark],
-                        center: .center,
-                        startRadius: 10,
-                        endRadius: 160
+            if currentForm.isPitcher {
+                pitcherGlassBody
+            } else {
+                bodyShape
+                    .fill(
+                        RadialGradient(
+                            colors: [colors.light, colors.dark],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 160
+                        )
                     )
-                )
-                .frame(width: 260, height: 220)
-                .overlay(
-                    bodyShape
-                        .stroke(colors.stroke, lineWidth: 3)
-                        .frame(width: 260, height: 220)
-                )
+                    .frame(width: 260, height: 220)
+                    .overlay(
+                        bodyShape
+                            .stroke(colors.stroke, lineWidth: 3)
+                            .frame(width: 260, height: 220)
+                    )
+            }
 
             face
 
@@ -412,6 +419,74 @@ struct ContentView: View {
                 .frame(width: 10, height: 10)
         }
         .offset(x: 20, y: -118)
+    }
+
+    /// The pitcher's body: lemonade filling the lower two-thirds, a pale
+    /// translucent glass sheen over the whole silhouette so both the liquid
+    /// and the empty headspace above it read as glass, and a couple of
+    /// diagonal highlight streaks for the reflection.
+    private var pitcherGlassBody: some View {
+        let colors = currentForm.bodyColors
+        return ZStack {
+            bodyShape
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 1.0, green: 0.93, blue: 0.45), Color(red: 0.95, green: 0.76, blue: 0.14)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 260, height: 220)
+                .mask(
+                    Rectangle()
+                        .frame(width: 260, height: 220 * 0.62)
+                        .frame(width: 260, height: 220, alignment: .bottom)
+                )
+
+            // A couple of bubbles rising through the liquid.
+            Circle()
+                .fill(Color.white.opacity(0.55))
+                .frame(width: 7, height: 7)
+                .offset(x: -28, y: 40)
+            Circle()
+                .fill(Color.white.opacity(0.4))
+                .frame(width: 5, height: 5)
+                .offset(x: 22, y: 68)
+
+            bodyShape
+                .fill(
+                    LinearGradient(
+                        colors: [colors.light.opacity(0.55), colors.dark.opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 260, height: 220)
+
+            glassHighlight
+                .frame(width: 260, height: 220)
+                .clipShape(bodyShape)
+
+            bodyShape
+                .stroke(colors.stroke, lineWidth: 3)
+                .frame(width: 260, height: 220)
+        }
+    }
+
+    /// Two diagonal streaks standing in for a glass reflection.
+    private var glassHighlight: some View {
+        ZStack {
+            Capsule()
+                .fill(Color.white.opacity(0.45))
+                .frame(width: 14, height: 120)
+                .rotationEffect(.degrees(18))
+                .offset(x: -55, y: -10)
+            Capsule()
+                .fill(Color.white.opacity(0.25))
+                .frame(width: 8, height: 70)
+                .rotationEffect(.degrees(18))
+                .offset(x: -30, y: 20)
+        }
     }
 
     /// Handle loop, stroked twice so it reads as an outlined band.
