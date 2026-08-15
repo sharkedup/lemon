@@ -189,6 +189,9 @@ struct ContentView: View {
 
     @State private var leftArmAngle: Double = -20
     @State private var rightArmAngle: Double = 20
+    @State private var leftForearmAngle: Double = 0
+    @State private var rightForearmAngle: Double = 0
+    @State private var showMuscles = false
     @State private var leftLegOffset: CGSize = .zero
     @State private var rightLegOffset: CGSize = .zero
 
@@ -425,17 +428,70 @@ struct ContentView: View {
 
     private var arms: some View {
         ZStack {
-            Capsule()
-                .fill(currentForm.bodyColors.stroke)
-                .frame(width: 12, height: 56)
-                .rotationEffect(.degrees(leftArmAngle), anchor: .top)
+            arm(angle: leftArmAngle, forearmAngle: leftForearmAngle, side: -1)
                 .offset(x: -118, y: -8)
-            Capsule()
-                .fill(currentForm.bodyColors.stroke)
-                .frame(width: 12, height: 56)
-                .rotationEffect(.degrees(rightArmAngle), anchor: .top)
+            arm(angle: rightArmAngle, forearmAngle: rightForearmAngle, side: 1)
                 .offset(x: 118, y: -8)
         }
+    }
+
+    /// One arm, hanging from a shoulder pivot at the top of its 12x56 layout box.
+    /// `angle` swings the whole arm at the shoulder, `forearmAngle` bends it at the elbow.
+    /// `side` is -1 for the left arm and 1 for the right, so the bicep bulges outward.
+    private func arm(angle: Double, forearmAngle: Double, side: Double) -> some View {
+        let colors = currentForm.bodyColors
+        return VStack(spacing: 0) {
+            // Upper arm.
+            ZStack {
+                Capsule()
+                    .fill(colors.stroke)
+                    .frame(width: 12, height: 34)
+
+                if showMuscles {
+                    bicep(side: side)
+                }
+            }
+            .frame(width: 12, height: 34)
+
+            // Forearm, overlapping the upper arm by 4pt so a straight arm reads as one capsule.
+            ZStack {
+                Capsule()
+                    .fill(colors.stroke)
+                    .frame(width: 12, height: 30)
+
+                if showMuscles {
+                    Circle()
+                        .fill(colors.dark)
+                        .frame(width: 18, height: 18)
+                        .overlay(Circle().stroke(colors.stroke, lineWidth: 3))
+                        .offset(y: 15)
+                }
+            }
+            .frame(width: 12, height: 22)
+            .rotationEffect(.degrees(forearmAngle), anchor: .top)
+        }
+        .frame(width: 12, height: 56)
+        .rotationEffect(.degrees(angle), anchor: .top)
+    }
+
+    /// Cartoon bicep bulge that pops onto the upper arm during the flex.
+    private func bicep(side: Double) -> some View {
+        let colors = currentForm.bodyColors
+        return ZStack {
+            Ellipse()
+                .fill(colors.dark)
+                .frame(width: 34, height: 28)
+                .overlay(Ellipse().stroke(colors.stroke, lineWidth: 3))
+
+            // Crease line so it reads as a flexed muscle rather than a blob.
+            Capsule()
+                .fill(colors.stroke.opacity(0.55))
+                .frame(width: 3, height: 11)
+                .rotationEffect(.degrees(-18 * side))
+                .offset(x: CGFloat(-side * 6))
+        }
+        .offset(x: CGFloat(-side * 8), y: 2)
+        .transition(.scale(scale: 0.2).combined(with: .opacity))
     }
 
     private var legs: some View {
@@ -710,9 +766,13 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.3)) {
             showBanner = true
         }
+        // Double-biceps pose: upper arms swing in, forearms fold straight up.
         withAnimation(.spring(response: 0.3, dampingFraction: 0.35)) {
             leftArmAngle = -100
             rightArmAngle = 100
+            leftForearmAngle = -80
+            rightForearmAngle = 80
+            showMuscles = true
             moveScale = CGSize(width: 1.15, height: 0.95)
         }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.4).delay(0.5)) {
@@ -727,6 +787,9 @@ struct ContentView: View {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 leftArmAngle = -20
                 rightArmAngle = 20
+                leftForearmAngle = 0
+                rightForearmAngle = 0
+                showMuscles = false
             }
             withAnimation(.easeInOut(duration: 0.3)) {
                 showBanner = false
