@@ -10,12 +10,14 @@
 		6197929BBFBB7883861D8DDA /* LemonApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1FD5B87EDE5DF9A0D2665A /* LemonApp.swift */; };
 		75D6116E30FCB10850B197D6 /* ToneSynth.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6892B17895DA20474D9570 /* ToneSynth.swift */; };
 		9C0DC233DB689BB42F8382D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E5D8324B4871D3BC84FC990B /* Assets.xcassets */; };
+		A0040A7435B1A2745278C382 /* Speaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38C5BA25606B3E35FEED6FB3 /* Speaker.swift */; };
 		E175D2070CA7B1F2839F9909 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5629DD627BE3F8FBA3E2F9C8 /* ContentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2B1FD5B87EDE5DF9A0D2665A /* LemonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LemonApp.swift; sourceTree = "<group>"; };
 		2FFF76C0F775C192BCBEFDE6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		38C5BA25606B3E35FEED6FB3 /* Speaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Speaker.swift; sourceTree = "<group>"; };
 		4664207D76B18F0D3553859F /* Lemon.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lemon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5629DD627BE3F8FBA3E2F9C8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E5D8324B4871D3BC84FC990B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -46,6 +48,7 @@
 				5629DD627BE3F8FBA3E2F9C8 /* ContentView.swift */,
 				2FFF76C0F775C192BCBEFDE6 /* Info.plist */,
 				2B1FD5B87EDE5DF9A0D2665A /* LemonApp.swift */,
+				38C5BA25606B3E35FEED6FB3 /* Speaker.swift */,
 				EF6892B17895DA20474D9570 /* ToneSynth.swift */,
 			);
 			path = Lemon;
@@ -124,6 +127,7 @@
 			files = (
 				E175D2070CA7B1F2839F9909 /* ContentView.swift in Sources */,
 				6197929BBFBB7883861D8DDA /* LemonApp.swift in Sources */,
+				A0040A7435B1A2745278C382 /* Speaker.swift in Sources */,
 				75D6116E30FCB10850B197D6 /* ToneSynth.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

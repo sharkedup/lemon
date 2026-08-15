@@ -105,6 +105,81 @@ enum InputAction: Equatable {
     case twirl
 }
 
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+struct PitcherShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path(roundedRect: rect, cornerRadius: rect.width * 0.2)
+    }
+}
+
+enum Fruit: Equatable {
+    case lemon, clementine, lime, lemonadePitcher
+
+    var bodyColors: (light: Color, dark: Color, stroke: Color) {
+        switch self {
+        case .lemon:
+            return (Color(red: 1.0, green: 0.93, blue: 0.35), Color(red: 0.98, green: 0.78, blue: 0.1), Color(red: 0.75, green: 0.58, blue: 0.05))
+        case .clementine:
+            return (Color(red: 1.0, green: 0.68, blue: 0.32), Color(red: 0.95, green: 0.48, blue: 0.12), Color(red: 0.75, green: 0.35, blue: 0.05))
+        case .lime:
+            return (Color(red: 0.78, green: 0.92, blue: 0.42), Color(red: 0.55, green: 0.78, blue: 0.22), Color(red: 0.32, green: 0.5, blue: 0.1))
+        case .lemonadePitcher:
+            return (Color(red: 0.97, green: 0.92, blue: 0.7), Color(red: 0.9, green: 0.78, blue: 0.35), Color(red: 0.7, green: 0.55, blue: 0.15))
+        }
+    }
+
+    var usesFlower: Bool { self == .clementine }
+    var isPitcher: Bool { self == .lemonadePitcher }
+
+    var name: String {
+        switch self {
+        case .lemon: return "Lemon"
+        case .clementine: return "Clementine"
+        case .lime: return "Lime"
+        case .lemonadePitcher: return "Lemonade Pitcher"
+        }
+    }
+
+    var announcement: String? {
+        switch self {
+        case .lemon: return nil
+        case .clementine: return "Clementine time!"
+        case .lime: return "Lime time!"
+        case .lemonadePitcher: return "Lemonade time!"
+        }
+    }
+
+    var bannerText: String {
+        switch self {
+        case .lemon: return "🍋 LEMON POWER! 🍋"
+        case .clementine: return "🍊 CLEMENTINE TIME! 🍊"
+        case .lime: return "🍏 LIME TIME! 🍏"
+        case .lemonadePitcher: return "🥤 LEMONADE TIME! 🥤"
+        }
+    }
+}
+
+enum ComboKind {
+    case lemonPower
+    case transform(Fruit)
+    case flex
+}
+
+struct Combo {
+    let sequence: [InputAction]
+    let kind: ComboKind
+}
+
 struct ContentView: View {
     @State private var isAwake = false
     @State private var moveOffset: CGSize = .zero
@@ -122,20 +197,23 @@ struct ContentView: View {
     @State private var lightsLit = false
 
     @State private var inputHistory: [InputAction] = []
-    @State private var showSpecialBanner = false
+    @State private var bannerText = ""
+    @State private var showBanner = false
+    @State private var currentForm: Fruit = .lemon
 
     private let synth = ToneSynth()
+    private let speaker = Speaker()
 
     private let twirlTune: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 1046.50]
-
-    private let comboSequence: [InputAction] = [
-        .direction(.up), .direction(.up),
-        .direction(.down), .direction(.down),
-        .direction(.right), .direction(.right),
-        .twirl
-    ]
-
     private let specialTune: [Double] = [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50, 1318.51]
+
+    private let combos: [Combo] = [
+        Combo(sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.right), .direction(.right), .twirl], kind: .lemonPower),
+        Combo(sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.left), .direction(.left), .twirl], kind: .transform(.clementine)),
+        Combo(sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .twirl], kind: .flex),
+        Combo(sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.lime)),
+        Combo(sequence: [.direction(.left), .direction(.left), .direction(.right), .direction(.right), .direction(.up), .direction(.up), .twirl], kind: .transform(.lemonadePitcher))
+    ]
 
     var body: some View {
         ZStack {
@@ -155,8 +233,8 @@ struct ContentView: View {
                             wake()
                         }
 
-                    if showSpecialBanner {
-                        Text("🍋 LEMON POWER! 🍋")
+                    if showBanner {
+                        Text(bannerText)
                             .font(.title2.weight(.heavy))
                             .foregroundStyle(
                                 LinearGradient(
@@ -173,7 +251,7 @@ struct ContentView: View {
                     }
                 }
 
-                Text(isAwake ? "Lemon" : "Tap to wake up")
+                Text(isAwake ? currentForm.name : "Tap to wake up")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color(red: 0.55, green: 0.42, blue: 0.05))
 
@@ -191,12 +269,17 @@ struct ContentView: View {
         }
     }
 
+    private var bodyShape: AnyShape {
+        currentForm.isPitcher ? AnyShape(PitcherShape()) : AnyShape(LemonShape())
+    }
+
     private var lemonCharacter: some View {
-        ZStack {
-            LemonShape()
+        let colors = currentForm.bodyColors
+        return ZStack {
+            bodyShape
                 .fill(
                     RadialGradient(
-                        colors: [Color(red: 1.0, green: 0.93, blue: 0.35), Color(red: 0.98, green: 0.78, blue: 0.1)],
+                        colors: [colors.light, colors.dark],
                         center: .center,
                         startRadius: 10,
                         endRadius: 160
@@ -204,25 +287,28 @@ struct ContentView: View {
                 )
                 .frame(width: 260, height: 220)
                 .overlay(
-                    LemonShape()
-                        .stroke(Color(red: 0.75, green: 0.58, blue: 0.05), lineWidth: 3)
+                    bodyShape
+                        .stroke(colors.stroke, lineWidth: 3)
                         .frame(width: 260, height: 220)
                 )
 
             face
 
-            // little nub on top
-            Ellipse()
-                .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
-                .frame(width: 14, height: 10)
-                .offset(y: -112)
+            if currentForm.isPitcher {
+                pitcherTrim
+            } else {
+                // little nub on top
+                Ellipse()
+                    .fill(colors.stroke)
+                    .frame(width: 14, height: 10)
+                    .offset(y: -112)
 
-            // leaf
-            Ellipse()
-                .fill(Color(red: 0.36, green: 0.62, blue: 0.24))
-                .frame(width: 46, height: 22)
-                .rotationEffect(.degrees(-30))
-                .offset(x: 20, y: -118)
+                if currentForm.usesFlower {
+                    flower
+                } else {
+                    leaf
+                }
+            }
 
             arms
             legs
@@ -230,6 +316,47 @@ struct ContentView: View {
         .offset(moveOffset)
         .rotationEffect(.degrees(moveRotation + twirlRotation))
         .scaleEffect(moveScale)
+    }
+
+    private var leaf: some View {
+        Ellipse()
+            .fill(Color(red: 0.36, green: 0.62, blue: 0.24))
+            .frame(width: 46, height: 22)
+            .rotationEffect(.degrees(-30))
+            .offset(x: 20, y: -118)
+    }
+
+    private var flower: some View {
+        ZStack {
+            ForEach(0..<5, id: \.self) { i in
+                Ellipse()
+                    .fill(Color(red: 1.0, green: 0.75, blue: 0.85))
+                    .frame(width: 16, height: 10)
+                    .offset(x: 8)
+                    .rotationEffect(.degrees(Double(i) * 72))
+            }
+            Circle()
+                .fill(Color(red: 0.98, green: 0.78, blue: 0.1))
+                .frame(width: 10, height: 10)
+        }
+        .offset(x: 20, y: -118)
+    }
+
+    private var pitcherTrim: some View {
+        ZStack {
+            Triangle()
+                .fill(currentForm.bodyColors.dark)
+                .frame(width: 30, height: 22)
+                .rotationEffect(.degrees(20))
+                .offset(x: 108, y: -98)
+
+            Circle()
+                .trim(from: 0.15, to: 0.65)
+                .stroke(currentForm.bodyColors.stroke, lineWidth: 10)
+                .frame(width: 66, height: 90)
+                .rotationEffect(.degrees(90))
+                .offset(x: -150, y: 0)
+        }
     }
 
     private var partyLights: some View {
@@ -299,12 +426,12 @@ struct ContentView: View {
     private var arms: some View {
         ZStack {
             Capsule()
-                .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
+                .fill(currentForm.bodyColors.stroke)
                 .frame(width: 12, height: 56)
                 .rotationEffect(.degrees(leftArmAngle), anchor: .top)
                 .offset(x: -118, y: -8)
             Capsule()
-                .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
+                .fill(currentForm.bodyColors.stroke)
                 .frame(width: 12, height: 56)
                 .rotationEffect(.degrees(rightArmAngle), anchor: .top)
                 .offset(x: 118, y: -8)
@@ -314,11 +441,11 @@ struct ContentView: View {
     private var legs: some View {
         ZStack {
             Capsule()
-                .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
+                .fill(currentForm.bodyColors.stroke)
                 .frame(width: 10, height: 26)
                 .offset(x: -23 + leftLegOffset.width, y: 105 + leftLegOffset.height)
             Capsule()
-                .fill(Color(red: 0.75, green: 0.58, blue: 0.05))
+                .fill(currentForm.bodyColors.stroke)
                 .frame(width: 10, height: 26)
                 .offset(x: 23 + rightLegOffset.width, y: 105 + rightLegOffset.height)
         }
@@ -387,8 +514,8 @@ struct ContentView: View {
     private func dance(_ direction: DanceDirection) {
         guard !isBusy else { return }
 
-        if recordInput(.direction(direction)) {
-            performSpecialMove()
+        if let kind = recordInput(.direction(direction)) {
+            trigger(kind)
             return
         }
 
@@ -424,8 +551,8 @@ struct ContentView: View {
     private func twirl() {
         guard !isBusy else { return }
 
-        if recordInput(.twirl) {
-            performSpecialMove()
+        if let kind = recordInput(.twirl) {
+            trigger(kind)
             return
         }
 
@@ -452,25 +579,39 @@ struct ContentView: View {
         }
     }
 
-    /// Appends to the rolling input buffer and reports whether it now completes the combo.
-    private func recordInput(_ action: InputAction) -> Bool {
+    /// Appends to the rolling input buffer and reports the combo it completes, if any.
+    private func recordInput(_ action: InputAction) -> ComboKind? {
         inputHistory.append(action)
-        if inputHistory.count > comboSequence.count {
-            inputHistory.removeFirst(inputHistory.count - comboSequence.count)
+        let maxLength = combos.map { $0.sequence.count }.max() ?? 0
+        if inputHistory.count > maxLength {
+            inputHistory.removeFirst(inputHistory.count - maxLength)
         }
-        if inputHistory == comboSequence {
-            inputHistory.removeAll()
-            return true
+        for combo in combos {
+            guard inputHistory.count >= combo.sequence.count else { continue }
+            if Array(inputHistory.suffix(combo.sequence.count)) == combo.sequence {
+                inputHistory.removeAll()
+                return combo.kind
+            }
         }
-        return false
+        return nil
+    }
+
+    private func trigger(_ kind: ComboKind) {
+        switch kind {
+        case .lemonPower: performSpecialMove()
+        case .transform(let fruit): performTransform(fruit)
+        case .flex: performFlex()
+        }
     }
 
     private func performSpecialMove() {
         isBusy = true
         let duration = 2.2
+        currentForm = .lemon
+        bannerText = Fruit.lemon.bannerText
 
         withAnimation(.easeInOut(duration: 0.3)) {
-            showSpecialBanner = true
+            showBanner = true
         }
         withAnimation(.interpolatingSpring(stiffness: 55, damping: 6)) {
             twirlRotation += 1080
@@ -509,7 +650,86 @@ struct ContentView: View {
                 rightLegOffset = .zero
             }
             withAnimation(.easeInOut(duration: 0.3)) {
-                showSpecialBanner = false
+                showBanner = false
+            }
+            isBusy = false
+        }
+    }
+
+    private func performTransform(_ fruit: Fruit) {
+        isBusy = true
+        let duration = 2.0
+        currentForm = fruit
+        bannerText = fruit.bannerText
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showBanner = true
+        }
+        withAnimation(.interpolatingSpring(stiffness: 60, damping: 7)) {
+            twirlRotation += 720
+            moveScale = CGSize(width: 1.2, height: 1.2)
+        }
+        withAnimation(.easeInOut(duration: 0.3).delay(duration - 0.3)) {
+            moveScale = CGSize(width: 1, height: 1)
+        }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+            leftArmAngle = -140
+            rightArmAngle = 140
+        }
+        lightsLit.toggle()
+
+        for (i, frequency) in twirlTune.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.13) {
+                synth.play(frequency: frequency, duration: 0.15)
+            }
+        }
+
+        if let phrase = fruit.announcement {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                speaker.speak(phrase)
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                leftArmAngle = -20
+                rightArmAngle = 20
+            }
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showBanner = false
+            }
+            isBusy = false
+        }
+    }
+
+    private func performFlex() {
+        isBusy = true
+        let duration = 1.6
+        bannerText = "💪 STRONG LEMON! 💪"
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showBanner = true
+        }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.35)) {
+            leftArmAngle = -100
+            rightArmAngle = 100
+            moveScale = CGSize(width: 1.15, height: 0.95)
+        }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.4).delay(0.5)) {
+            moveScale = CGSize(width: 1, height: 1)
+        }
+        synth.play(frequency: 220, duration: 0.3)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            synth.play(frequency: 165, duration: 0.35)
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                leftArmAngle = -20
+                rightArmAngle = 20
+            }
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showBanner = false
             }
             isBusy = false
         }
