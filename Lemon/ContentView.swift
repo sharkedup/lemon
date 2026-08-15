@@ -116,9 +116,68 @@ struct Triangle: Shape {
     }
 }
 
+/// Fraction-of-rect helper so the pitcher parts stay aligned to each other
+/// whatever frame they are drawn in.
+private func fraction(_ rect: CGRect, _ x: CGFloat, _ y: CGFloat) -> CGPoint {
+    CGPoint(x: rect.minX + rect.width * x, y: rect.minY + rect.height * y)
+}
+
+/// The jug body of the lemonade pitcher: wide shoulders that keep the arms
+/// attached, a taper down to a narrow base, and a short lip on the right that
+/// the rim's spout overhangs. Drawn in the same 260x220 frame as `LemonShape`.
 struct PitcherShape: Shape {
     func path(in rect: CGRect) -> Path {
-        Path(roundedRect: rect, cornerRadius: rect.width * 0.2)
+        var path = Path()
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { fraction(rect, x, y) }
+
+        // Mouth.
+        path.move(to: p(0.13, 0.09))
+        path.addLine(to: p(0.79, 0.09))
+        // Short lip, folding back into the right wall.
+        path.addQuadCurve(to: p(0.91, 0.19), control: p(0.87, 0.11))
+        path.addQuadCurve(to: p(0.91, 0.30), control: p(0.93, 0.25))
+        // Right wall: shoulder out, then taper in to the base.
+        path.addCurve(to: p(0.74, 0.93), control1: p(0.98, 0.46), control2: p(0.88, 0.80))
+        // Base.
+        path.addCurve(to: p(0.26, 0.93), control1: p(0.62, 1.01), control2: p(0.38, 1.01))
+        // Left wall back up to the mouth.
+        path.addCurve(to: p(0.09, 0.27), control1: p(0.14, 0.80), control2: p(0.02, 0.46))
+        path.addQuadCurve(to: p(0.13, 0.09), control: p(0.08, 0.15))
+        path.closeSubpath()
+
+        return path
+    }
+}
+
+/// The rim of the pitcher, drawn as an ellipse pulled out into a beak on the
+/// right so the mouth and the pouring spout read as one continuous piece.
+struct PitcherRimShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { fraction(rect, x, y) }
+
+        path.move(to: p(0.0, 0.5))
+        path.addCurve(to: p(0.70, 0.04), control1: p(0.04, 0.02), control2: p(0.34, 0.0))
+        path.addQuadCurve(to: p(1.0, 0.34), control: p(0.89, 0.06))   // out into the beak
+        path.addQuadCurve(to: p(0.72, 0.96), control: p(0.90, 0.80))  // and back under it
+        path.addCurve(to: p(0.0, 0.5), control1: p(0.36, 1.0), control2: p(0.04, 0.98))
+        path.closeSubpath()
+
+        return path
+    }
+}
+
+/// Centre line of the pitcher's handle. Open on purpose: it is stroked, not
+/// filled, and drawn behind the body so the joints are hidden by the wall.
+struct PitcherHandleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { fraction(rect, x, y) }
+
+        path.move(to: p(0.15, 0.32))
+        path.addCurve(to: p(0.22, 0.78), control1: p(-0.18, 0.38), control2: p(-0.18, 0.74))
+
+        return path
     }
 }
 
@@ -293,6 +352,11 @@ struct ContentView: View {
     private var lemonCharacter: some View {
         let colors = currentForm.bodyColors
         return ZStack {
+            // Behind the body so the handle's joints are hidden by the wall.
+            if currentForm.isPitcher {
+                pitcherHandle
+            }
+
             bodyShape
                 .fill(
                     RadialGradient(
@@ -359,20 +423,48 @@ struct ContentView: View {
         .offset(x: 20, y: -118)
     }
 
-    private var pitcherTrim: some View {
-        ZStack {
-            Triangle()
-                .fill(currentForm.bodyColors.dark)
-                .frame(width: 30, height: 22)
-                .rotationEffect(.degrees(20))
-                .offset(x: 108, y: -98)
+    /// Handle loop, stroked twice so it reads as an outlined band.
+    private var pitcherHandle: some View {
+        let colors = currentForm.bodyColors
+        return ZStack {
+            PitcherHandleShape()
+                .stroke(colors.stroke, style: StrokeStyle(lineWidth: 24, lineCap: .butt))
+                .frame(width: 260, height: 220)
+            PitcherHandleShape()
+                .stroke(colors.light, style: StrokeStyle(lineWidth: 18, lineCap: .butt))
+                .frame(width: 260, height: 220)
+        }
+    }
 
+    /// Rim, spout and the lemonade sitting in it.
+    private var pitcherTrim: some View {
+        let colors = currentForm.bodyColors
+        return ZStack {
+            PitcherRimShape()
+                .fill(colors.dark)
+                .frame(width: 218, height: 34)
+                .overlay(
+                    PitcherRimShape()
+                        .stroke(colors.stroke, lineWidth: 3)
+                        .frame(width: 218, height: 34)
+                )
+                .offset(x: 13, y: -88)
+
+            // The lemonade itself.
+            PitcherRimShape()
+                .fill(Color(red: 1.0, green: 0.93, blue: 0.5))
+                .frame(width: 180, height: 20)
+                .offset(x: 6, y: -88)
+
+            // A couple of bubbles floating on top.
             Circle()
-                .trim(from: 0.15, to: 0.65)
-                .stroke(currentForm.bodyColors.stroke, lineWidth: 10)
-                .frame(width: 66, height: 90)
-                .rotationEffect(.degrees(90))
-                .offset(x: -150, y: 0)
+                .fill(Color.white.opacity(0.8))
+                .frame(width: 9, height: 9)
+                .offset(x: -46, y: -90)
+            Circle()
+                .fill(Color.white.opacity(0.65))
+                .frame(width: 6, height: 6)
+                .offset(x: 14, y: -86)
         }
     }
 
@@ -476,7 +568,7 @@ struct ContentView: View {
                 if showMuscles {
                     Circle()
                         .fill(colors.dark)
-                        .frame(width: 18, height: 18)
+                        .frame(width: 24, height: 24)
                         .overlay(Circle().stroke(colors.stroke, lineWidth: 3))
                         .offset(y: 15)
                 }
@@ -485,6 +577,8 @@ struct ContentView: View {
             .rotationEffect(.degrees(forearmAngle), anchor: .top)
         }
         .frame(width: 12, height: 56)
+        // Beefed up while flexing. Scaled about the shoulder so the arm stays attached.
+        .scaleEffect(showMuscles ? 1.45 : 1, anchor: .top)
         .rotationEffect(.degrees(angle), anchor: .top)
     }
 
@@ -494,17 +588,19 @@ struct ContentView: View {
         return ZStack {
             Ellipse()
                 .fill(colors.dark)
-                .frame(width: 34, height: 28)
+                .frame(width: 42, height: 34)
                 .overlay(Ellipse().stroke(colors.stroke, lineWidth: 3))
 
             // Crease line so it reads as a flexed muscle rather than a blob.
             Capsule()
                 .fill(colors.stroke.opacity(0.55))
-                .frame(width: 3, height: 11)
-                .rotationEffect(.degrees(-18 * side))
-                .offset(x: CGFloat(-side * 6))
+                .frame(width: 3, height: 13)
+                .rotationEffect(.degrees(18 * side))
+                .offset(x: CGFloat(side * 8))
         }
-        .offset(x: CGFloat(-side * 8), y: 2)
+        // Positive local x is the underside of the arm once it is swung out for
+        // the flex, so the bulge is offset toward `side` to sit on top.
+        .offset(x: CGFloat(side * 9), y: 2)
         .transition(.scale(scale: 0.2).combined(with: .opacity))
     }
 
@@ -771,12 +867,15 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.3)) {
             showBanner = true
         }
-        // Double-biceps pose: upper arms swing in, forearms fold straight up.
+        // Double-biceps pose. Unlike the dance poses these angles are mirrored
+        // (positive on the left), which swings the upper arms outward away from
+        // the body instead of across it; the forearms then fold back up over the
+        // biceps.
         withAnimation(.spring(response: 0.3, dampingFraction: 0.35)) {
-            leftArmAngle = -100
-            rightArmAngle = 100
-            leftForearmAngle = -80
-            rightForearmAngle = 80
+            leftArmAngle = 125
+            rightArmAngle = -125
+            leftForearmAngle = 75
+            rightForearmAngle = -75
             showMuscles = true
             moveScale = CGSize(width: 1.15, height: 0.95)
         }
