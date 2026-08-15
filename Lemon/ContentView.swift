@@ -170,19 +170,21 @@ struct PitcherHandleShape: Shape {
     }
 }
 
-/// Short melodies for the special moves, as note frequencies in Hz.
-/// Played one note at a time through `ToneSynth`'s sine wave.
+/// Short original riffs for the special moves, as note frequencies in Hz.
+/// Played one note at a time through `ToneSynth`'s sine wave. None of these
+/// are quotes of real songs — they're arcade-style stingers built for punch,
+/// not for being hummable.
 enum Tune {
     /// Rising "ta-daa!" fanfare — LEMON POWER.
     static let lemonPower: [Double] = [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50, 1318.51]
-    /// "Twinkle, Twinkle, Little Star" — Clementine.
-    static let clementine: [Double] = [523.25, 523.25, 783.99, 783.99, 880.00, 880.00, 783.99]
-    /// "Frere Jacques" — Lime.
-    static let lime: [Double] = [523.25, 587.33, 659.25, 523.25, 523.25, 587.33, 659.25, 523.25]
-    /// "Mary Had a Little Lamb" — Lemonade Pitcher.
-    static let lemonadePitcher: [Double] = [659.25, 587.33, 523.25, 587.33, 659.25, 659.25, 659.25]
-    /// Big slow C-G-C-E strongman fanfare — STRONG LEMON flex.
-    static let flex: [Double] = [261.63, 392.00, 523.25, 659.25]
+    /// Pentatonic coin-bounce arpeggio, up and back down — Clementine.
+    static let clementine: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 523.25]
+    /// Chromatic downward sting — Lime.
+    static let lime: [Double] = [880.00, 783.99, 739.99, 698.46, 587.33, 440.00]
+    /// Ascending "pour" run with a wide leap at the top — Lemonade Pitcher.
+    static let lemonadePitcher: [Double] = [392.00, 440.00, 493.88, 587.33, 698.46, 880.00, 1046.50]
+    /// Gritty minor-third power riff — STRONG LEMON flex.
+    static let flex: [Double] = [261.63, 311.13, 392.00, 523.25, 392.00, 523.25]
     /// Sparkle run for the plain twirl button.
     static let twirl: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 1046.50]
 }
