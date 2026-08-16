@@ -274,6 +274,7 @@ struct ContentView: View {
     @State private var bannerText = ""
     @State private var showBanner = false
     @State private var currentForm: Fruit = .lemon
+    @State private var showHelp = false
 
     private let synth = ToneSynth()
 
@@ -336,7 +337,30 @@ struct ContentView: View {
                     .padding(.bottom, 40)
                 }
             }
+
+            VStack {
+                HStack {
+                    Spacer()
+                    helpButton
+                }
+                Spacer()
+            }
+            .padding()
         }
+        .sheet(isPresented: $showHelp) {
+            HelpView()
+        }
+    }
+
+    private var helpButton: some View {
+        Button {
+            showHelp = true
+        } label: {
+            Image(systemName: "questionmark.circle.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(Color(red: 0.75, green: 0.58, blue: 0.05))
+        }
+        .buttonStyle(.plain)
     }
 
     private var bodyShape: AnyShape {
@@ -928,7 +952,7 @@ struct ContentView: View {
     private func performFlex() {
         isBusy = true
         let duration = 1.6
-        bannerText = "💪 STRONG LEMON! 💪"
+        bannerText = "💪 STRONG \(currentForm.name.uppercased())! 💪"
 
         withAnimation(.easeInOut(duration: 0.3)) {
             showBanner = true
@@ -962,6 +986,71 @@ struct ContentView: View {
                 showBanner = false
             }
             isBusy = false
+        }
+    }
+}
+
+private struct ComboHint: Identifiable {
+    let id = UUID()
+    let emoji: String
+    let name: String
+    let sequence: String?
+}
+
+struct HelpView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let hints: [ComboHint] = [
+        ComboHint(emoji: "🍋", name: "Lemon Power", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ➡️ ➡️ then Twirl!"),
+        ComboHint(emoji: "🍊", name: "Clementine", sequence: nil),
+        ComboHint(emoji: "🍋‍🟩", name: "Lime", sequence: nil),
+        ComboHint(emoji: "🥤", name: "Lemonade Pitcher", sequence: nil),
+        ComboHint(emoji: "💪", name: "Strong Lemon", sequence: nil)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("How to Play")
+                            .font(.title2.weight(.bold))
+                        Text("Tap the sleepy lemon to wake it up. Use the arrows to make it dance — each direction has its own move and sound. Hit Twirl to spin, light up, and play a tune.")
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Secret Combos")
+                            .font(.title2.weight(.bold))
+                        Text("This lemon is hiding 5 secret combos in its dance moves. Do the right sequence of arrows, then hit Twirl, to unlock something special. Here's one to get you started — can you find the rest?")
+                    }
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        ForEach(hints) { hint in
+                            HStack(alignment: .top, spacing: 12) {
+                                Text(hint.emoji)
+                                    .font(.title2)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(hint.name)
+                                        .font(.headline)
+                                    Text(hint.sequence ?? "???")
+                                        .font(.subheadline)
+                                        .foregroundStyle(hint.sequence == nil ? Color(red: 0.55, green: 0.42, blue: 0.05).opacity(0.6) : Color(red: 0.55, green: 0.42, blue: 0.05))
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .foregroundStyle(Color(red: 0.35, green: 0.24, blue: 0.05))
+            }
+            .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+            .navigationTitle("It's a Lemon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
     }
 }
