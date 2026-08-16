@@ -247,8 +247,22 @@ enum ComboKind {
 }
 
 struct Combo {
+    /// Stable key used to persist whether this combo has been discovered yet.
+    let id: String
     let sequence: [InputAction]
     let kind: ComboKind
+}
+
+enum ComboDiscovery {
+    private static func key(_ id: String) -> String { "comboDiscovered_\(id)" }
+
+    static func isDiscovered(_ id: String) -> Bool {
+        UserDefaults.standard.bool(forKey: key(id))
+    }
+
+    static func markDiscovered(_ id: String) {
+        UserDefaults.standard.set(true, forKey: key(id))
+    }
 }
 
 struct ContentView: View {
@@ -279,11 +293,11 @@ struct ContentView: View {
     private let synth = ToneSynth()
 
     private let combos: [Combo] = [
-        Combo(sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.right), .direction(.right), .twirl], kind: .lemonPower),
-        Combo(sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.left), .direction(.left), .twirl], kind: .transform(.clementine)),
-        Combo(sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .twirl], kind: .flex),
-        Combo(sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.lime)),
-        Combo(sequence: [.direction(.left), .direction(.left), .direction(.right), .direction(.right), .direction(.up), .direction(.up), .twirl], kind: .transform(.lemonadePitcher))
+        Combo(id: "lemonPower", sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.right), .direction(.right), .twirl], kind: .lemonPower),
+        Combo(id: "clementine", sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.left), .direction(.left), .twirl], kind: .transform(.clementine)),
+        Combo(id: "flex", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .twirl], kind: .flex),
+        Combo(id: "lime", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.lime)),
+        Combo(id: "lemonadePitcher", sequence: [.direction(.left), .direction(.left), .direction(.right), .direction(.right), .direction(.up), .direction(.up), .twirl], kind: .transform(.lemonadePitcher))
     ]
 
     var body: some View {
@@ -851,6 +865,7 @@ struct ContentView: View {
             guard inputHistory.count >= combo.sequence.count else { continue }
             if Array(inputHistory.suffix(combo.sequence.count)) == combo.sequence {
                 inputHistory.removeAll()
+                ComboDiscovery.markDiscovered(combo.id)
                 return combo.kind
             }
         }
@@ -991,21 +1006,23 @@ struct ContentView: View {
 }
 
 private struct ComboHint: Identifiable {
-    let id = UUID()
+    let id: String
     let emoji: String
     let name: String
-    let sequence: String?
+    let sequence: String
+    /// Lemon Power is shown to get players started; the rest stay "???" until discovered.
+    let alwaysRevealed: Bool
 }
 
 struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let hints: [ComboHint] = [
-        ComboHint(emoji: "🍋", name: "Lemon Power", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ➡️ ➡️ then Twirl!"),
-        ComboHint(emoji: "🍊", name: "Clementine", sequence: nil),
-        ComboHint(emoji: "🍋‍🟩", name: "Lime", sequence: nil),
-        ComboHint(emoji: "🥤", name: "Lemonade Pitcher", sequence: nil),
-        ComboHint(emoji: "💪", name: "Strong Lemon", sequence: nil)
+        ComboHint(id: "lemonPower", emoji: "🍋", name: "Lemon Power", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ➡️ ➡️ then Twirl!", alwaysRevealed: true),
+        ComboHint(id: "clementine", emoji: "🍊", name: "Clementine", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ⬅️ ⬅️ then Twirl!", alwaysRevealed: false),
+        ComboHint(id: "flex", emoji: "💪", name: "Strong Lemon", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ then Twirl!", alwaysRevealed: false),
+        ComboHint(id: "lime", emoji: "🍋‍🟩", name: "Lime", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ➡️ ➡️ then Twirl!", alwaysRevealed: false),
+        ComboHint(id: "lemonadePitcher", emoji: "🥤", name: "Lemonade Pitcher", sequence: "⬅️ ⬅️ ➡️ ➡️ ⬆️ ⬆️ then Twirl!", alwaysRevealed: false)
     ]
 
     var body: some View {
@@ -1021,20 +1038,21 @@ struct HelpView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Secret Combos")
                             .font(.title2.weight(.bold))
-                        Text("This lemon is hiding 5 secret combos in its dance moves. Do the right sequence of arrows, then hit Twirl, to unlock something special. Here's one to get you started — can you find the rest?")
+                        Text("This lemon is hiding 5 secret combos in its dance moves. Do the right sequence of arrows, then hit Twirl, to unlock something special. Here's one to get you started — can you find the rest? Combos you've found will show up here.")
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
                         ForEach(hints) { hint in
+                            let revealed = hint.alwaysRevealed || ComboDiscovery.isDiscovered(hint.id)
                             HStack(alignment: .top, spacing: 12) {
                                 Text(hint.emoji)
                                     .font(.title2)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(hint.name)
                                         .font(.headline)
-                                    Text(hint.sequence ?? "???")
+                                    Text(revealed ? hint.sequence : "???")
                                         .font(.subheadline)
-                                        .foregroundStyle(hint.sequence == nil ? Color(red: 0.55, green: 0.42, blue: 0.05).opacity(0.6) : Color(red: 0.55, green: 0.42, blue: 0.05))
+                                        .foregroundStyle(revealed ? Color(red: 0.55, green: 0.42, blue: 0.05) : Color(red: 0.55, green: 0.42, blue: 0.05).opacity(0.6))
                                 }
                             }
                         }
