@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct LemonShape: Shape {
     func path(in rect: CGRect) -> Path {
@@ -263,6 +264,10 @@ enum ComboDiscovery {
     static func markDiscovered(_ id: String) {
         UserDefaults.standard.set(true, forKey: key(id))
     }
+
+    static func reset(_ id: String) {
+        UserDefaults.standard.removeObject(forKey: key(id))
+    }
 }
 
 struct ContentView: View {
@@ -300,11 +305,42 @@ struct ContentView: View {
         Combo(id: "lemonadePitcher", sequence: [.direction(.left), .direction(.left), .direction(.right), .direction(.right), .direction(.up), .direction(.up), .twirl], kind: .transform(.lemonadePitcher))
     ]
 
+    /// Reference canvas the whole scene is designed at (an iPhone-sized screen).
+    /// On a bigger screen — chiefly iPad — this gets uniformly scaled up via
+    /// `GeometryReader` instead of leaving the fixed-size character and controls
+    /// looking tiny and lost in the middle of a much larger display.
+    private let referenceWidth: CGFloat = 402
+    private let referenceHeight: CGFloat = 874
+
     var body: some View {
         ZStack {
             Color(red: 0.98, green: 0.98, blue: 0.92)
                 .ignoresSafeArea()
 
+            GeometryReader { geo in
+                // Only scale up on iPad; on iPhone this is a no-op that renders
+                // exactly as it did before scaling existed, since the canvas
+                // size equals geo.size and scale is 1 — GeometryReader's own
+                // safe-area-respecting frame keeps the layout exactly where it
+                // was, arrows and help button included.
+                let isPad = UIDevice.current.userInterfaceIdiom == .pad
+                let scale = isPad ? min(geo.size.width / referenceWidth, geo.size.height / referenceHeight) : 1
+                let canvasWidth = isPad ? referenceWidth : geo.size.width
+                let canvasHeight = isPad ? referenceHeight : geo.size.height
+
+                sceneContent
+                    .frame(width: canvasWidth, height: canvasHeight)
+                    .scaleEffect(scale)
+                    .frame(width: geo.size.width, height: geo.size.height)
+            }
+        }
+        .sheet(isPresented: $showHelp) {
+            HelpView()
+        }
+    }
+
+    private var sceneContent: some View {
+        ZStack {
             VStack(spacing: 40) {
                 Spacer()
 
@@ -360,9 +396,6 @@ struct ContentView: View {
                 Spacer()
             }
             .padding()
-        }
-        .sheet(isPresented: $showHelp) {
-            HelpView()
         }
     }
 
@@ -1016,6 +1049,8 @@ private struct ComboHint: Identifiable {
 
 struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var discoveryRefresh = false
+    @State private var showResetConfirmation = false
 
     private let hints: [ComboHint] = [
         ComboHint(id: "lemonPower", emoji: "🍋", name: "Lemon Power", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ➡️ ➡️ then Twirl!", alwaysRevealed: true),
@@ -1038,7 +1073,7 @@ struct HelpView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Secret Combos")
                             .font(.title2.weight(.bold))
-                        Text("This lemon is hiding 5 secret combos in its dance moves. Do the right sequence of arrows, then hit Twirl, to unlock something special. Here's one to get you started — can you find the rest? Combos you've found will show up here.")
+                        Text("This lemon is hiding secret combos in its dance moves. Do the right sequence of arrows, then hit Twirl, to unlock something special. Here's one to get you started — can you find the rest? Combos you've found will show up here.")
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
@@ -1057,6 +1092,15 @@ struct HelpView: View {
                             }
                         }
                     }
+                    .id(discoveryRefresh)
+
+                    Button(role: .destructive) {
+                        showResetConfirmation = true
+                    } label: {
+                        Label("Reset Found Combos", systemImage: "arrow.counterclockwise")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .padding(.top, 8)
                 }
                 .padding()
                 .foregroundStyle(Color(red: 0.35, green: 0.24, blue: 0.05))
@@ -1068,6 +1112,19 @@ struct HelpView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .confirmationDialog(
+                "Forget every combo you've found?",
+                isPresented: $showResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Reset", role: .destructive) {
+                    for hint in hints where !hint.alwaysRevealed {
+                        ComboDiscovery.reset(hint.id)
+                    }
+                    discoveryRefresh.toggle()
+                }
+                Button("Cancel", role: .cancel) {}
             }
         }
     }
