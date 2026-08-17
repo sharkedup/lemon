@@ -33,6 +33,17 @@ struct LemonShape: Shape {
     }
 }
 
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
 enum DanceDirection: CaseIterable, Equatable {
     case up, down, left, right
 
@@ -188,14 +199,29 @@ enum Tune {
     static let flex: [Double] = [261.63, 311.13, 392.00, 523.25, 392.00, 523.25]
     /// Sparkle run for the plain twirl button.
     static let twirl: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 1046.50]
+    /// Slow, unhurried descent — a distinguished riff for the beard.
+    static let singleSingleDoubleDouble: [Double] = [392.00, 329.63, 261.63, 196.00]
+    /// Bouncy two-note "woof" — Ruby.
+    static let ruby: [Double] = [523.25, 523.25, 392.00, 523.25, 659.25]
+    /// Sleek descending slink with a flick at the end — Marble.
+    static let marble: [Double] = [659.25, 587.33, 523.25, 440.00, 523.25]
+    /// Alternating low two-note dread — Lemon Shark.
+    static let lemonShark: [Double] = [164.81, 174.61, 164.81, 174.61, 164.81, 174.61]
+    /// Fast ascending sprint run — Runner.
+    static let runner: [Double] = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 523.25]
+    /// Light, high, bouncy chime — Baby Lemon.
+    static let babyLemon: [Double] = [1046.50, 659.25, 783.99, 1046.50]
+    /// Rising arpeggio with a glittery flourish — Princess.
+    static let princess: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50]
 }
 
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
+    case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess
 
     var bodyColors: (light: Color, dark: Color, stroke: Color) {
         switch self {
-        case .lemon:
+        case .lemon, .singleSingleDoubleDouble, .runner, .princess:
             return (Color(red: 1.0, green: 0.93, blue: 0.35), Color(red: 0.98, green: 0.78, blue: 0.1), Color(red: 0.75, green: 0.58, blue: 0.05))
         case .clementine:
             return (Color(red: 1.0, green: 0.68, blue: 0.32), Color(red: 0.95, green: 0.48, blue: 0.12), Color(red: 0.75, green: 0.35, blue: 0.05))
@@ -206,11 +232,26 @@ enum Fruit: Equatable {
             // the warm lemonade color comes from `pitcherGlassBody`'s liquid
             // fill instead, so the vessel itself reads as clear glass.
             return (Color(red: 0.93, green: 0.97, blue: 0.99), Color(red: 0.80, green: 0.90, blue: 0.94), Color(red: 0.53, green: 0.64, blue: 0.68))
+        case .ruby:
+            // Gray-and-white, matching Ruby's shaggy coat.
+            return (Color(red: 0.97, green: 0.96, blue: 0.94), Color(red: 0.55, green: 0.55, blue: 0.58), Color(red: 0.35, green: 0.35, blue: 0.38))
+        case .marble:
+            // Black-and-white tuxedo coloring, matching Marble's markings.
+            return (Color(red: 0.98, green: 0.98, blue: 0.98), Color(red: 0.15, green: 0.15, blue: 0.17), Color(red: 0.1, green: 0.1, blue: 0.12))
+        case .lemonShark:
+            // Tan-gray, like the real fish this is punning on.
+            return (Color(red: 0.88, green: 0.82, blue: 0.5), Color(red: 0.72, green: 0.65, blue: 0.32), Color(red: 0.5, green: 0.44, blue: 0.2))
         }
     }
 
     var usesFlower: Bool { self == .clementine }
     var isPitcher: Bool { self == .lemonadePitcher }
+    var isDog: Bool { self == .ruby }
+    var isCat: Bool { self == .marble }
+    var hasSharkFin: Bool { self == .lemonShark }
+    var hasBeard: Bool { self == .singleSingleDoubleDouble }
+    var hasRunningShoes: Bool { self == .runner }
+    var hasPrincessDress: Bool { self == .princess }
 
     var name: String {
         switch self {
@@ -218,6 +259,12 @@ enum Fruit: Equatable {
         case .clementine: return "Clementine"
         case .lime: return "Lime"
         case .lemonadePitcher: return "Lemonade Pitcher"
+        case .singleSingleDoubleDouble: return "Single Single Double Double"
+        case .ruby: return "Ruby"
+        case .marble: return "Marble"
+        case .lemonShark: return "Lemon Shark"
+        case .runner: return "Runner"
+        case .princess: return "Princess"
         }
     }
 
@@ -228,6 +275,12 @@ enum Fruit: Equatable {
         case .clementine: return Tune.clementine
         case .lime: return Tune.lime
         case .lemonadePitcher: return Tune.lemonadePitcher
+        case .singleSingleDoubleDouble: return Tune.singleSingleDoubleDouble
+        case .ruby: return Tune.ruby
+        case .marble: return Tune.marble
+        case .lemonShark: return Tune.lemonShark
+        case .runner: return Tune.runner
+        case .princess: return Tune.princess
         }
     }
 
@@ -237,6 +290,12 @@ enum Fruit: Equatable {
         case .clementine: return "🍊 CLEMENTINE TIME! 🍊"
         case .lime: return "🍋‍🟩 LIME TIME! 🍋‍🟩"
         case .lemonadePitcher: return "🥤 LEMONADE TIME! 🥤"
+        case .singleSingleDoubleDouble: return "🧔 SINGLE SINGLE DOUBLE DOUBLE! 🧔"
+        case .ruby: return "🐶 IT'S RUBY! 🐶"
+        case .marble: return "🐱 IT'S MARBLE! 🐱"
+        case .lemonShark: return "🦈 LEMON SHARK! 🦈"
+        case .runner: return "🏃 GO GO GO! 🏃"
+        case .princess: return "👑 ROYAL LEMON! 👑"
         }
     }
 }
@@ -245,6 +304,7 @@ enum ComboKind {
     case lemonPower
     case transform(Fruit)
     case flex
+    case addBabyLemon
 }
 
 struct Combo {
@@ -293,6 +353,7 @@ struct ContentView: View {
     @State private var bannerText = ""
     @State private var showBanner = false
     @State private var currentForm: Fruit = .lemon
+    @State private var showBabyLemon = false
     @State private var showHelp = false
 
     private let synth = ToneSynth()
@@ -302,7 +363,16 @@ struct ContentView: View {
         Combo(id: "clementine", sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.left), .direction(.left), .twirl], kind: .transform(.clementine)),
         Combo(id: "flex", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .twirl], kind: .flex),
         Combo(id: "lime", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.lime)),
-        Combo(id: "lemonadePitcher", sequence: [.direction(.left), .direction(.left), .direction(.right), .direction(.right), .direction(.up), .direction(.up), .twirl], kind: .transform(.lemonadePitcher))
+        Combo(id: "lemonadePitcher", sequence: [.direction(.left), .direction(.left), .direction(.right), .direction(.right), .direction(.up), .direction(.up), .twirl], kind: .transform(.lemonadePitcher)),
+        // These four end on a direction rather than a Twirl — they complete
+        // the instant the last arrow lands, no Twirl needed.
+        Combo(id: "singleSingleDoubleDouble", sequence: [.direction(.left), .direction(.right), .direction(.left), .direction(.left), .direction(.right), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.singleSingleDoubleDouble)),
+        Combo(id: "ruby", sequence: [.direction(.left), .direction(.up), .direction(.right), .direction(.down), .direction(.left), .direction(.up), .direction(.right), .direction(.down)], kind: .transform(.ruby)),
+        Combo(id: "marble", sequence: [.direction(.up), .direction(.down), .direction(.up), .direction(.down), .direction(.left), .direction(.right), .direction(.left), .direction(.right)], kind: .transform(.marble)),
+        Combo(id: "lemonShark", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.lemonShark)),
+        Combo(id: "runner", sequence: [.direction(.right), .direction(.right), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.runner)),
+        Combo(id: "babyLemon", sequence: [.direction(.up), .direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.down), .twirl], kind: .addBabyLemon),
+        Combo(id: "princessDress", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.down), .direction(.up), .twirl], kind: .transform(.princess))
     ]
 
     /// Reference canvas the whole scene is designed at (an iPhone-sized screen).
@@ -440,12 +510,31 @@ struct ContentView: View {
                             .stroke(colors.stroke, lineWidth: 3)
                             .frame(width: 260, height: 220)
                     )
+
+                if currentForm.isDog {
+                    dogFacePatch
+                } else if currentForm.isCat {
+                    catFacePatch
+                }
             }
 
             face
 
-            if currentForm.isPitcher {
+            if currentForm.hasBeard {
+                beardAndMoustache
+            }
+            if currentForm.isCat {
+                whiskers
+            }
+
+            if currentForm.isDog {
+                dogEars
+            } else if currentForm.isCat {
+                catEars
+            } else if currentForm.isPitcher {
                 pitcherTrim
+            } else if currentForm.hasPrincessDress {
+                tiara
             } else {
                 // little nub on top
                 Ellipse()
@@ -453,15 +542,32 @@ struct ContentView: View {
                     .frame(width: 14, height: 10)
                     .offset(y: -112)
 
-                if currentForm.usesFlower {
+                if currentForm.hasSharkFin {
+                    sharkFin
+                } else if currentForm.usesFlower {
                     flower
                 } else {
                     leaf
                 }
             }
 
+            if currentForm.hasSharkFin {
+                sharkTail
+            }
+
             arms
             legs
+
+            if currentForm.hasRunningShoes {
+                runningShoes
+            }
+            if currentForm.hasPrincessDress {
+                princessDress
+            }
+
+            if showBabyLemon {
+                babyLemonCompanion
+            }
         }
         .offset(moveOffset)
         .rotationEffect(.degrees(moveRotation + twirlRotation))
@@ -490,6 +596,195 @@ struct ContentView: View {
                 .frame(width: 10, height: 10)
         }
         .offset(x: 20, y: -118)
+    }
+
+    /// Dark patch over one side of the head for Ruby's asymmetric coloring,
+    /// clipped to the body silhouette so it never spills past the outline.
+    private var dogFacePatch: some View {
+        Ellipse()
+            .fill(Color(red: 0.55, green: 0.55, blue: 0.58))
+            .frame(width: 150, height: 170)
+            .offset(x: -55, y: -35)
+            .frame(width: 260, height: 220)
+            .clipShape(bodyShape)
+    }
+
+    private var dogEars: some View {
+        ZStack {
+            Ellipse()
+                .fill(currentForm.bodyColors.dark)
+                .frame(width: 52, height: 92)
+                .rotationEffect(.degrees(-18))
+                .offset(x: -112, y: -66)
+            Ellipse()
+                .fill(currentForm.bodyColors.dark)
+                .frame(width: 52, height: 92)
+                .rotationEffect(.degrees(18))
+                .offset(x: 112, y: -66)
+        }
+    }
+
+    /// Black mask with a white blaze down the middle, clipped to the body silhouette.
+    private var catFacePatch: some View {
+        ZStack {
+            Ellipse()
+                .fill(Color(red: 0.15, green: 0.15, blue: 0.17))
+                .frame(width: 220, height: 200)
+                .offset(y: -20)
+            Ellipse()
+                .fill(Color.white)
+                .frame(width: 38, height: 180)
+                .offset(y: -6)
+        }
+        .frame(width: 260, height: 220)
+        .clipShape(bodyShape)
+    }
+
+    private var catEars: some View {
+        ZStack {
+            Triangle()
+                .fill(Color(red: 0.15, green: 0.15, blue: 0.17))
+                .frame(width: 46, height: 56)
+                .rotationEffect(.degrees(-8))
+                .offset(x: -78, y: -108)
+            Triangle()
+                .fill(Color(red: 0.15, green: 0.15, blue: 0.17))
+                .frame(width: 46, height: 56)
+                .rotationEffect(.degrees(8))
+                .offset(x: 78, y: -108)
+        }
+    }
+
+    private var whiskers: some View {
+        ZStack {
+            ForEach(0..<3, id: \.self) { i in
+                Capsule()
+                    .fill(Color.white.opacity(0.85))
+                    .frame(width: 44, height: 1.5)
+                    .rotationEffect(.degrees(Double(i - 1) * 10))
+                    .offset(x: -60, y: CGFloat(i - 1) * 7)
+                Capsule()
+                    .fill(Color.white.opacity(0.85))
+                    .frame(width: 44, height: 1.5)
+                    .rotationEffect(.degrees(-Double(i - 1) * 10))
+                    .offset(x: 60, y: CGFloat(i - 1) * 7)
+            }
+        }
+        .offset(y: 4)
+    }
+
+    private var beardAndMoustache: some View {
+        ZStack {
+            // Chin beard, well clear of the mouth.
+            Ellipse()
+                .fill(Color(red: 0.4, green: 0.29, blue: 0.14))
+                .frame(width: 68, height: 36)
+                .offset(y: 33)
+            // Moustache, sitting right above the mouth line.
+            Capsule()
+                .fill(Color(red: 0.4, green: 0.29, blue: 0.14))
+                .frame(width: 20, height: 6)
+                .rotationEffect(.degrees(-16))
+                .offset(x: -12, y: -3)
+            Capsule()
+                .fill(Color(red: 0.4, green: 0.29, blue: 0.14))
+                .frame(width: 20, height: 6)
+                .rotationEffect(.degrees(16))
+                .offset(x: 12, y: -3)
+        }
+        .offset(y: -10)
+    }
+
+    private var sharkFin: some View {
+        Triangle()
+            .fill(currentForm.bodyColors.dark)
+            .overlay(Triangle().stroke(currentForm.bodyColors.stroke, lineWidth: 2))
+            .frame(width: 40, height: 50)
+            .offset(y: -128)
+    }
+
+    private var sharkTail: some View {
+        Triangle()
+            .fill(currentForm.bodyColors.dark)
+            .overlay(Triangle().stroke(currentForm.bodyColors.stroke, lineWidth: 2))
+            .frame(width: 34, height: 56)
+            .rotationEffect(.degrees(100))
+            .offset(x: 128, y: 10)
+    }
+
+    private var runningShoes: some View {
+        ZStack {
+            Capsule()
+                .fill(Color.white)
+                .frame(width: 24, height: 13)
+                .overlay(Capsule().stroke(Color(red: 0.2, green: 0.45, blue: 0.85), lineWidth: 2.5))
+                .offset(x: -23 + leftLegOffset.width, y: 119 + leftLegOffset.height)
+            Capsule()
+                .fill(Color.white)
+                .frame(width: 24, height: 13)
+                .overlay(Capsule().stroke(Color(red: 0.2, green: 0.45, blue: 0.85), lineWidth: 2.5))
+                .offset(x: 23 + rightLegOffset.width, y: 119 + rightLegOffset.height)
+            Capsule()
+                .fill(Color(red: 0.85, green: 0.2, blue: 0.3))
+                .frame(width: 60, height: 9)
+                .offset(y: -84)
+        }
+    }
+
+    private var tiara: some View {
+        ZStack {
+            Triangle().fill(Color(red: 1.0, green: 0.84, blue: 0.2)).frame(width: 13, height: 16).offset(x: -15, y: -114)
+            Triangle().fill(Color(red: 1.0, green: 0.84, blue: 0.2)).frame(width: 17, height: 22).offset(y: -118)
+            Triangle().fill(Color(red: 1.0, green: 0.84, blue: 0.2)).frame(width: 13, height: 16).offset(x: 15, y: -114)
+            Circle().fill(Color(red: 0.9, green: 0.25, blue: 0.55)).frame(width: 7, height: 7).offset(y: -120)
+        }
+    }
+
+    private var princessDress: some View {
+        Triangle()
+            .fill(
+                LinearGradient(
+                    colors: [Color(red: 1.0, green: 0.55, blue: 0.75), Color(red: 0.65, green: 0.45, blue: 0.9)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(width: 150, height: 70)
+            .offset(y: 78)
+    }
+
+    /// A smaller lemon character that rides along after Baby Lemon is discovered.
+    private var babyLemonCompanion: some View {
+        ZStack {
+            LemonShape()
+                .fill(
+                    RadialGradient(
+                        colors: [Color(red: 1.0, green: 0.93, blue: 0.35), Color(red: 0.98, green: 0.78, blue: 0.1)],
+                        center: .center,
+                        startRadius: 4,
+                        endRadius: 60
+                    )
+                )
+                .frame(width: 88, height: 74)
+                .overlay(
+                    LemonShape()
+                        .stroke(Color(red: 0.75, green: 0.58, blue: 0.05), lineWidth: 2)
+                        .frame(width: 88, height: 74)
+                )
+
+            HStack(spacing: 12) {
+                Circle().fill(Color(red: 0.35, green: 0.24, blue: 0.05)).frame(width: 6, height: 6)
+                Circle().fill(Color(red: 0.35, green: 0.24, blue: 0.05)).frame(width: 6, height: 6)
+            }
+            .offset(y: -4)
+
+            Ellipse()
+                .fill(Color(red: 0.36, green: 0.62, blue: 0.24))
+                .frame(width: 16, height: 8)
+                .rotationEffect(.degrees(-30))
+                .offset(y: -38)
+        }
+        .offset(x: 95, y: 78)
     }
 
     /// The pitcher's body: lemonade filling the lower two-thirds, a pale
@@ -910,6 +1205,7 @@ struct ContentView: View {
         case .lemonPower: performSpecialMove()
         case .transform(let fruit): performTransform(fruit)
         case .flex: performFlex()
+        case .addBabyLemon: performAddBabyLemon()
         }
     }
 
@@ -917,6 +1213,7 @@ struct ContentView: View {
         isBusy = true
         let duration = 2.2
         currentForm = .lemon
+        showBabyLemon = false
         bannerText = Fruit.lemon.bannerText
 
         withAnimation(.easeInOut(duration: 0.3)) {
@@ -997,6 +1294,33 @@ struct ContentView: View {
         }
     }
 
+    private func performAddBabyLemon() {
+        isBusy = true
+        let duration = 1.4
+        bannerText = "🍋👶 BABY LEMON! 🍋👶"
+        showBabyLemon = true
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showBanner = true
+        }
+        withAnimation(.interpolatingSpring(stiffness: 70, damping: 8)) {
+            moveScale = CGSize(width: 1.15, height: 1.15)
+        }
+        withAnimation(.easeInOut(duration: 0.3).delay(duration - 0.3)) {
+            moveScale = CGSize(width: 1, height: 1)
+        }
+        lightsLit.toggle()
+
+        playTune(Tune.babyLemon, step: 0.14, duration: 0.16)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showBanner = false
+            }
+            isBusy = false
+        }
+    }
+
     private func performFlex() {
         isBusy = true
         let duration = 1.6
@@ -1043,6 +1367,7 @@ private struct ComboHint: Identifiable {
     let emoji: String
     let name: String
     let sequence: String
+    let pressCount: Int
     /// Lemon Power is shown to get players started; the rest stay "???" until discovered.
     let alwaysRevealed: Bool
 }
@@ -1053,11 +1378,18 @@ struct HelpView: View {
     @State private var showResetConfirmation = false
 
     private let hints: [ComboHint] = [
-        ComboHint(id: "lemonPower", emoji: "🍋", name: "Lemon Power", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ➡️ ➡️ then Twirl!", alwaysRevealed: true),
-        ComboHint(id: "clementine", emoji: "🍊", name: "Clementine", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ⬅️ ⬅️ then Twirl!", alwaysRevealed: false),
-        ComboHint(id: "flex", emoji: "💪", name: "Strong Lemon", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ then Twirl!", alwaysRevealed: false),
-        ComboHint(id: "lime", emoji: "🍋‍🟩", name: "Lime", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ➡️ ➡️ then Twirl!", alwaysRevealed: false),
-        ComboHint(id: "lemonadePitcher", emoji: "🥤", name: "Lemonade Pitcher", sequence: "⬅️ ⬅️ ➡️ ➡️ ⬆️ ⬆️ then Twirl!", alwaysRevealed: false)
+        ComboHint(id: "lemonPower", emoji: "🍋", name: "Lemon Power", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ➡️ ➡️ then Twirl!", pressCount: 7, alwaysRevealed: true),
+        ComboHint(id: "clementine", emoji: "🍊", name: "Clementine", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ⬅️ ⬅️ then Twirl!", pressCount: 7, alwaysRevealed: false),
+        ComboHint(id: "flex", emoji: "💪", name: "Strong Lemon", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ then Twirl!", pressCount: 7, alwaysRevealed: false),
+        ComboHint(id: "lime", emoji: "🍋‍🟩", name: "Lime", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 7, alwaysRevealed: false),
+        ComboHint(id: "lemonadePitcher", emoji: "🥤", name: "Lemonade Pitcher", sequence: "⬅️ ⬅️ ➡️ ➡️ ⬆️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false),
+        ComboHint(id: "singleSingleDoubleDouble", emoji: "🧔", name: "Single Single Double Double", sequence: "⬅️ ➡️ ⬅️ ⬅️ ➡️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false),
+        ComboHint(id: "ruby", emoji: "🐶", name: "Ruby", sequence: "⬅️ ⬆️ ➡️ ⬇️ ⬅️ ⬆️ ➡️ ⬇️", pressCount: 8, alwaysRevealed: false),
+        ComboHint(id: "marble", emoji: "🐱", name: "Marble", sequence: "⬆️ ⬇️ ⬆️ ⬇️ ⬅️ ➡️ ⬅️ ➡️", pressCount: 8, alwaysRevealed: false),
+        ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false),
+        ComboHint(id: "runner", emoji: "🏃", name: "Runner", sequence: "➡️ ➡️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 6, alwaysRevealed: false),
+        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", sequence: "⬆️ ⬆️ ⬆️ ⬇️ ⬇️ ⬇️ then Twirl!", pressCount: 7, alwaysRevealed: false),
+        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬇️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false)
     ]
 
     var body: some View {
@@ -1085,7 +1417,7 @@ struct HelpView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(hint.name)
                                         .font(.headline)
-                                    Text(revealed ? hint.sequence : "???")
+                                    Text(revealed ? hint.sequence : "??? · \(hint.pressCount) presses")
                                         .font(.subheadline)
                                         .foregroundStyle(revealed ? Color(red: 0.55, green: 0.42, blue: 0.05) : Color(red: 0.55, green: 0.42, blue: 0.05).opacity(0.6))
                                 }
