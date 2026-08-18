@@ -126,3 +126,150 @@ private struct FormCell: View {
     }
     .background(Color(red: 0.98, green: 0.98, blue: 0.92))
 }
+
+// MARK: - Coordinate grids
+//
+// Two different coordinate systems show up in ContentView.swift:
+//
+// 1. Inside a custom `Shape`'s `path(in rect:)` — points are fractions of
+//    the shape's own rect, 0.0...1.0 on each axis. `FractionGrid` below
+//    overlays that grid (red) on top of a shape so a call like
+//    `p(0.74, 0.93)` can be read straight off the image.
+//
+// 2. `.offset(x:y:)` on a decoration (ears, patches, fins, the tiara...) —
+//    plain points, relative to the character's own center at (0, 0).
+//    `PointGrid` below overlays that grid (blue) so an offset like
+//    `x: -112, y: -66` can be read the same way.
+
+/// Red grid, 0.0–1.0 on each axis, for `Shape.path(in:)` fraction coordinates.
+private struct FractionGrid: View {
+    var divisions: Int = 10
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            ZStack {
+                ForEach(0...divisions, id: \.self) { i in
+                    let fraction = CGFloat(i) / CGFloat(divisions)
+                    let isCenter = i == divisions / 2
+
+                    Path { path in
+                        path.move(to: CGPoint(x: w * fraction, y: 0))
+                        path.addLine(to: CGPoint(x: w * fraction, y: h))
+                    }
+                    .stroke(Color.red.opacity(isCenter ? 0.4 : 0.15), lineWidth: isCenter ? 1.2 : 0.5)
+
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: h * fraction))
+                        path.addLine(to: CGPoint(x: w, y: h * fraction))
+                    }
+                    .stroke(Color.red.opacity(isCenter ? 0.4 : 0.15), lineWidth: isCenter ? 1.2 : 0.5)
+                }
+
+                ForEach(0...divisions, id: \.self) { i in
+                    let fraction = CGFloat(i) / CGFloat(divisions)
+                    Text(String(format: "%.1f", fraction))
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundStyle(Color.red.opacity(0.85))
+                        .position(x: w * fraction, y: 8)
+                    Text(String(format: "%.1f", fraction))
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundStyle(Color.red.opacity(0.85))
+                        .position(x: 12, y: h * fraction)
+                }
+            }
+        }
+    }
+}
+
+/// Blue grid, centered on (0, 0), for `.offset(x:y:)` point coordinates.
+/// Lines every `step` points out to `extent` in each direction.
+private struct PointGrid: View {
+    var extent: CGFloat = 160
+    var step: CGFloat = 20
+
+    private var steps: Int { Int(extent / step) }
+
+    var body: some View {
+        ZStack {
+            ForEach(-steps...steps, id: \.self) { i in
+                let value = CGFloat(i) * step
+                let isCenter = i == 0
+
+                Path { path in
+                    path.move(to: CGPoint(x: value + extent, y: 0))
+                    path.addLine(to: CGPoint(x: value + extent, y: extent * 2))
+                }
+                .stroke(Color.blue.opacity(isCenter ? 0.5 : 0.15), lineWidth: isCenter ? 1.2 : 0.5)
+
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: value + extent))
+                    path.addLine(to: CGPoint(x: extent * 2, y: value + extent))
+                }
+                .stroke(Color.blue.opacity(isCenter ? 0.5 : 0.15), lineWidth: isCenter ? 1.2 : 0.5)
+            }
+
+            ForEach(Array(stride(from: -steps, through: steps, by: 2)), id: \.self) { i in
+                let value = CGFloat(i) * step
+                Text("\(Int(value))")
+                    .font(.system(size: 7, weight: .medium))
+                    .foregroundStyle(Color.blue.opacity(0.85))
+                    .position(x: value + extent, y: 6)
+                Text("\(Int(value))")
+                    .font(.system(size: 7, weight: .medium))
+                    .foregroundStyle(Color.blue.opacity(0.85))
+                    .position(x: 6, y: value + extent)
+            }
+        }
+        .frame(width: extent * 2, height: extent * 2)
+    }
+}
+
+/// Red 0–1 grid over `LemonShape` alone, for editing its `path(in:)`.
+#Preview("Grid — Lemon Shape") {
+    ZStack {
+        LemonShape()
+            .fill(Color.yellow.opacity(0.3))
+            .overlay(LemonShape().stroke(Color(red: 0.75, green: 0.58, blue: 0.05), lineWidth: 2))
+        FractionGrid()
+    }
+    .frame(width: 260, height: 220)
+    .padding(40)
+    .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+}
+
+/// Red 0–1 grid over `PitcherShape` alone, for editing its `path(in:)`.
+#Preview("Grid — Pitcher Shape") {
+    ZStack {
+        PitcherShape()
+            .fill(Color.yellow.opacity(0.3))
+            .overlay(PitcherShape().stroke(Color(red: 0.75, green: 0.58, blue: 0.05), lineWidth: 2))
+        FractionGrid()
+    }
+    .frame(width: 260, height: 220)
+    .padding(40)
+    .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+}
+
+/// Blue point grid over Ruby, for reading/editing `dogEars` and
+/// `dogFacePatch`'s `.offset(x:y:)` values.
+#Preview("Grid — Ruby Offsets") {
+    ZStack {
+        ContentView(previewForm: .ruby, previewAwake: true).lemonCharacter
+        PointGrid(extent: 160, step: 20)
+    }
+    .frame(width: 320, height: 320)
+    .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+}
+
+/// Blue point grid over Marble, for reading/editing `catEars`, `catFacePatch`
+/// and `whiskers`' `.offset(x:y:)` values.
+#Preview("Grid — Marble Offsets") {
+    ZStack {
+        ContentView(previewForm: .marble, previewAwake: true).lemonCharacter
+        PointGrid(extent: 160, step: 20)
+    }
+    .frame(width: 320, height: 320)
+    .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+}
