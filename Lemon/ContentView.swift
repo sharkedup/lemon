@@ -356,6 +356,15 @@ struct ContentView: View {
     @State private var showBabyLemon = false
     @State private var showHelp = false
 
+    /// Normal app launch always starts asleep as a plain lemon — the defaults
+    /// here match that. Previews (see PreviewGallery.swift) pass other values
+    /// to jump straight to a specific form without walking through combos.
+    init(previewForm: Fruit = .lemon, previewAwake: Bool = false, previewBabyLemon: Bool = false) {
+        _currentForm = State(initialValue: previewForm)
+        _isAwake = State(initialValue: previewAwake)
+        _showBabyLemon = State(initialValue: previewBabyLemon)
+    }
+
     private let synth = ToneSynth()
 
     private let combos: [Combo] = [
@@ -484,7 +493,9 @@ struct ContentView: View {
         currentForm.isPitcher ? AnyShape(PitcherShape()) : AnyShape(LemonShape())
     }
 
-    private var lemonCharacter: some View {
+    /// Not private: PreviewGallery.swift renders this directly (without the
+    /// surrounding scene chrome) to preview individual forms at a glance.
+    var lemonCharacter: some View {
         let colors = currentForm.bodyColors
         return ZStack {
             // Behind the body so the handle's joints are hidden by the wall.
