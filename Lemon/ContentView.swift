@@ -312,6 +312,10 @@ struct Combo {
     let id: String
     let sequence: [InputAction]
     let kind: ComboKind
+    /// Combos being reworked (new graphics, new tunes, etc.) get switched off
+    /// here rather than deleted — the code, art, and tunes stay in place for
+    /// the preview gallery, they just can't be triggered or discovered.
+    var isEnabled: Bool = true
 }
 
 enum ComboDiscovery {
@@ -375,14 +379,22 @@ struct ContentView: View {
         Combo(id: "lemonadePitcher", sequence: [.direction(.left), .direction(.left), .direction(.right), .direction(.right), .direction(.up), .direction(.up), .twirl], kind: .transform(.lemonadePitcher)),
         // These four end on a direction rather than a Twirl — they complete
         // the instant the last arrow lands, no Twirl needed.
-        Combo(id: "singleSingleDoubleDouble", sequence: [.direction(.left), .direction(.right), .direction(.left), .direction(.left), .direction(.right), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.singleSingleDoubleDouble)),
-        Combo(id: "ruby", sequence: [.direction(.left), .direction(.up), .direction(.right), .direction(.down), .direction(.left), .direction(.up), .direction(.right), .direction(.down)], kind: .transform(.ruby)),
-        Combo(id: "marble", sequence: [.direction(.up), .direction(.down), .direction(.up), .direction(.down), .direction(.left), .direction(.right), .direction(.left), .direction(.right)], kind: .transform(.marble)),
-        Combo(id: "lemonShark", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.lemonShark)),
-        Combo(id: "runner", sequence: [.direction(.right), .direction(.right), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.runner)),
-        Combo(id: "babyLemon", sequence: [.direction(.up), .direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.down), .twirl], kind: .addBabyLemon),
-        Combo(id: "princessDress", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.down), .direction(.up), .twirl], kind: .transform(.princess))
+        //
+        // Disabled for the App Store release while their graphics/tunes are
+        // reworked (see PreviewGallery.swift) — flip isEnabled back to true
+        // once each one is ready.
+        Combo(id: "singleSingleDoubleDouble", sequence: [.direction(.left), .direction(.right), .direction(.left), .direction(.left), .direction(.right), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.singleSingleDoubleDouble), isEnabled: false),
+        Combo(id: "ruby", sequence: [.direction(.left), .direction(.up), .direction(.right), .direction(.down), .direction(.left), .direction(.up), .direction(.right), .direction(.down)], kind: .transform(.ruby), isEnabled: false),
+        Combo(id: "marble", sequence: [.direction(.up), .direction(.down), .direction(.up), .direction(.down), .direction(.left), .direction(.right), .direction(.left), .direction(.right)], kind: .transform(.marble), isEnabled: false),
+        Combo(id: "lemonShark", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.lemonShark), isEnabled: false),
+        Combo(id: "runner", sequence: [.direction(.right), .direction(.right), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.runner), isEnabled: false),
+        Combo(id: "babyLemon", sequence: [.direction(.up), .direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.down), .twirl], kind: .addBabyLemon, isEnabled: false),
+        Combo(id: "princessDress", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.down), .direction(.up), .twirl], kind: .transform(.princess), isEnabled: false)
     ]
+
+    /// What `recordInput` actually checks against — combos still being
+    /// reworked are excluded so they can't be triggered or discovered.
+    private var activeCombos: [Combo] { combos.filter(\.isEnabled) }
 
     /// Reference canvas the whole scene is designed at (an iPhone-sized screen).
     /// On a bigger screen — chiefly iPad — this gets uniformly scaled up via
@@ -1196,11 +1208,12 @@ struct ContentView: View {
     /// Appends to the rolling input buffer and reports the combo it completes, if any.
     private func recordInput(_ action: InputAction) -> ComboKind? {
         inputHistory.append(action)
-        let maxLength = combos.map { $0.sequence.count }.max() ?? 0
+        let candidates = activeCombos
+        let maxLength = candidates.map { $0.sequence.count }.max() ?? 0
         if inputHistory.count > maxLength {
             inputHistory.removeFirst(inputHistory.count - maxLength)
         }
-        for combo in combos {
+        for combo in candidates {
             guard inputHistory.count >= combo.sequence.count else { continue }
             if Array(inputHistory.suffix(combo.sequence.count)) == combo.sequence {
                 inputHistory.removeAll()
@@ -1381,6 +1394,9 @@ private struct ComboHint: Identifiable {
     let pressCount: Int
     /// Lemon Power is shown to get players started; the rest stay "???" until discovered.
     let alwaysRevealed: Bool
+    /// Mirrors the matching `Combo.isEnabled` in ContentView — combos being
+    /// reworked are hidden here too rather than just uncompletable.
+    var isEnabled: Bool = true
 }
 
 struct HelpView: View {
@@ -1394,13 +1410,15 @@ struct HelpView: View {
         ComboHint(id: "flex", emoji: "💪", name: "Strong Lemon", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ then Twirl!", pressCount: 7, alwaysRevealed: false),
         ComboHint(id: "lime", emoji: "🍋‍🟩", name: "Lime", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 7, alwaysRevealed: false),
         ComboHint(id: "lemonadePitcher", emoji: "🥤", name: "Lemonade Pitcher", sequence: "⬅️ ⬅️ ➡️ ➡️ ⬆️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false),
-        ComboHint(id: "singleSingleDoubleDouble", emoji: "🧔", name: "Single Single Double Double", sequence: "⬅️ ➡️ ⬅️ ⬅️ ➡️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false),
-        ComboHint(id: "ruby", emoji: "🐶", name: "Ruby", sequence: "⬅️ ⬆️ ➡️ ⬇️ ⬅️ ⬆️ ➡️ ⬇️", pressCount: 8, alwaysRevealed: false),
-        ComboHint(id: "marble", emoji: "🐱", name: "Marble", sequence: "⬆️ ⬇️ ⬆️ ⬇️ ⬅️ ➡️ ⬅️ ➡️", pressCount: 8, alwaysRevealed: false),
-        ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false),
-        ComboHint(id: "runner", emoji: "🏃", name: "Runner", sequence: "➡️ ➡️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 6, alwaysRevealed: false),
-        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", sequence: "⬆️ ⬆️ ⬆️ ⬇️ ⬇️ ⬇️ then Twirl!", pressCount: 7, alwaysRevealed: false),
-        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬇️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false)
+        // Disabled for the App Store release while their graphics/tunes are
+        // reworked — hidden from the list entirely, not just uncompletable.
+        ComboHint(id: "singleSingleDoubleDouble", emoji: "🧔", name: "Single Single Double Double", sequence: "⬅️ ➡️ ⬅️ ⬅️ ➡️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "ruby", emoji: "🐶", name: "Ruby", sequence: "⬅️ ⬆️ ➡️ ⬇️ ⬅️ ⬆️ ➡️ ⬇️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "marble", emoji: "🐱", name: "Marble", sequence: "⬆️ ⬇️ ⬆️ ⬇️ ⬅️ ➡️ ⬅️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "runner", emoji: "🏃", name: "Runner", sequence: "➡️ ➡️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 6, alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", sequence: "⬆️ ⬆️ ⬆️ ⬇️ ⬇️ ⬇️ then Twirl!", pressCount: 7, alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬇️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false, isEnabled: false)
     ]
 
     var body: some View {
@@ -1420,7 +1438,7 @@ struct HelpView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
-                        ForEach(hints) { hint in
+                        ForEach(hints.filter(\.isEnabled)) { hint in
                             let revealed = hint.alwaysRevealed || ComboDiscovery.isDiscovered(hint.id)
                             HStack(alignment: .top, spacing: 12) {
                                 Text(hint.emoji)
