@@ -1428,7 +1428,7 @@ struct HelpView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("How to Play")
                             .font(.title2.weight(.bold))
-                        Text("Tap the sleepy lemon to wake it up. Use the arrows to make it dance — each direction has its own move and sound. Hit Twirl to spin, light up, and play a tune.")
+                        Text("Tap the sleepy lemon to wake it up. Use the arrows and twirl button to make it dance.")
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
