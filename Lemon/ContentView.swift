@@ -1434,7 +1434,7 @@ struct HelpView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Secret Combos")
                             .font(.title2.weight(.bold))
-                        Text("This lemon is hiding secret combos in its dance moves. Do the right sequence of arrows, then hit Twirl, to unlock something special. Here's one to get you started — can you find the rest? Combos you've found will show up here.")
+                        Text("The lemon is hiding secret combos in its dance moves. Do the right sequence to unlock something special. Here's the first one to get you started. Combos you've found will show up here.")
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
