@@ -44,6 +44,36 @@ struct Triangle: Shape {
     }
 }
 
+/// A full, belled princess skirt: a narrow waistband flaring out along
+/// curved (not straight) sides into a scalloped, ruffled hem — rather than
+/// a flat-edged triangle.
+struct PrincessSkirtShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { fraction(rect, x, y) }
+
+        // Waistband.
+        path.move(to: p(0.40, 0.0))
+        path.addLine(to: p(0.60, 0.0))
+
+        // Right side, belling outward.
+        path.addCurve(to: p(0.94, 0.78), control1: p(0.66, 0.18), control2: p(0.92, 0.42))
+
+        // Scalloped hem, right to left.
+        path.addCurve(to: p(0.76, 0.86), control1: p(0.90, 0.94), control2: p(0.82, 0.94))
+        path.addCurve(to: p(0.58, 0.86), control1: p(0.70, 0.78), control2: p(0.64, 0.78))
+        path.addCurve(to: p(0.40, 0.86), control1: p(0.52, 0.94), control2: p(0.46, 0.94))
+        path.addCurve(to: p(0.22, 0.86), control1: p(0.34, 0.78), control2: p(0.28, 0.78))
+        path.addCurve(to: p(0.06, 0.78), control1: p(0.16, 0.94), control2: p(0.10, 0.94))
+
+        // Left side, back up to the waistband.
+        path.addCurve(to: p(0.40, 0.0), control1: p(0.08, 0.42), control2: p(0.34, 0.18))
+
+        path.closeSubpath()
+        return path
+    }
+}
+
 enum DanceDirection: CaseIterable, Equatable {
     case up, down, left, right
 
@@ -389,7 +419,7 @@ struct ContentView: View {
         Combo(id: "lemonShark", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.lemonShark), isEnabled: false),
         Combo(id: "runner", sequence: [.direction(.right), .direction(.right), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.runner), isEnabled: false),
         Combo(id: "babyLemon", sequence: [.direction(.up), .direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.down), .twirl], kind: .addBabyLemon),
-        Combo(id: "princessDress", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.down), .direction(.up), .twirl], kind: .transform(.princess), isEnabled: false)
+        Combo(id: "princessDress", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.down), .direction(.up), .twirl], kind: .transform(.princess))
     ]
 
     /// What `recordInput` actually checks against — combos still being
@@ -542,6 +572,8 @@ struct ContentView: View {
                     dogFacePatch(bodyShape: bodyShape)
                 } else if form.isCat {
                     catFacePatch(bodyShape: bodyShape)
+                } else if form.hasPrincessDress {
+                    princessBodyFill(bodyShape: bodyShape)
                 }
             }
 
@@ -560,8 +592,6 @@ struct ContentView: View {
                 catEars
             } else if form.isPitcher {
                 pitcherTrim(colors: colors)
-            } else if form.hasPrincessDress {
-                tiara
             } else {
                 // little nub on top
                 Ellipse()
@@ -575,6 +605,12 @@ struct ContentView: View {
                     flower
                 } else {
                     leaf
+                }
+
+                // Worn askew, tilted off to the side, so it doesn't fight
+                // the leaf for the same spot on top of the head.
+                if form.hasPrincessDress {
+                    tiara
                 }
             }
 
@@ -635,6 +671,18 @@ struct ContentView: View {
 
     /// Dark patch over one side of the head for Ruby's asymmetric coloring,
     /// clipped to the body silhouette so it never spills past the outline.
+    /// Recolors the lower portion of the body pink, clipped to the body's
+    /// own silhouette — starting at about the collar's middle and reaching
+    /// down to the bottom — so the bare lemon color on the sides is simply
+    /// filled in rather than covered with separate dress-shaped pieces.
+    private func princessBodyFill(bodyShape: AnyShape) -> some View {
+        Rectangle()
+            .fill(Color(red: 1.0, green: 0.62, blue: 0.82))
+            .frame(width: 260, height: 72)
+            .frame(width: 260, height: 220, alignment: .bottom)
+            .clipShape(bodyShape)
+    }
+
     private func dogFacePatch(bodyShape: AnyShape) -> some View {
         Ellipse()
             .fill(Color(red: 0.55, green: 0.55, blue: 0.58))
@@ -766,26 +814,77 @@ struct ContentView: View {
         }
     }
 
+    /// Silver rather than gold so it reads clearly against the yellow head
+    /// instead of blending into it. Tilted and shifted aside — rather than
+    /// centered — so it doesn't fight the leaf for the same spot on top.
     private var tiara: some View {
         ZStack {
-            Triangle().fill(Color(red: 1.0, green: 0.84, blue: 0.2)).frame(width: 13, height: 16).offset(x: -15, y: -114)
-            Triangle().fill(Color(red: 1.0, green: 0.84, blue: 0.2)).frame(width: 17, height: 22).offset(y: -118)
-            Triangle().fill(Color(red: 1.0, green: 0.84, blue: 0.2)).frame(width: 13, height: 16).offset(x: 15, y: -114)
-            Circle().fill(Color(red: 0.9, green: 0.25, blue: 0.55)).frame(width: 7, height: 7).offset(y: -120)
+            tiaraPoint(width: 13, height: 16).offset(x: -15, y: -114)
+            tiaraPoint(width: 17, height: 22).offset(y: -118)
+            tiaraPoint(width: 13, height: 16).offset(x: 15, y: -114)
+            Circle()
+                .fill(Color(red: 0.9, green: 0.25, blue: 0.55))
+                .frame(width: 7, height: 7)
+                .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 1))
+                .offset(y: -120)
         }
+        .rotationEffect(.degrees(-16))
+        .offset(x: -22, y: 6)
     }
 
-    private var princessDress: some View {
+    private func tiaraPoint(width: CGFloat, height: CGFloat) -> some View {
         Triangle()
-            .fill(
-                LinearGradient(
-                    colors: [Color(red: 1.0, green: 0.55, blue: 0.75), Color(red: 0.65, green: 0.45, blue: 0.9)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .frame(width: 150, height: 70)
-            .offset(y: 78)
+            .fill(Color(red: 0.93, green: 0.94, blue: 0.98))
+            .overlay(Triangle().stroke(Color(red: 0.6, green: 0.63, blue: 0.7), lineWidth: 1.5))
+            .frame(width: width, height: height)
+    }
+
+    /// Pink medieval-princess look: puffed shoulder sleeves worn over the
+    /// arms, a scalloped collar, and a full belled skirt with a ruffled hem
+    /// — rather than a single flat triangle standing in for the whole dress.
+    /// Colored to match a reference sketch: pink sleeves and skirt sides,
+    /// a white collar and skirt center panel, and a blue gem at the collar.
+    private var princessDress: some View {
+        let pink = Color(red: 1.0, green: 0.62, blue: 0.82)
+        let white = Color(red: 0.99, green: 0.98, blue: 0.99)
+        let trim = Color(red: 0.85, green: 0.4, blue: 0.62)
+        let jewelBlue = Color(red: 0.3, green: 0.55, blue: 0.88)
+
+        return ZStack {
+            Circle()
+                .fill(pink)
+                .overlay(Circle().stroke(trim, lineWidth: 2))
+                .frame(width: 50, height: 50)
+                .offset(x: -116, y: -30)
+            Circle()
+                .fill(pink)
+                .overlay(Circle().stroke(trim, lineWidth: 2))
+                .frame(width: 50, height: 50)
+                .offset(x: 116, y: -30)
+
+            // Collar: curved, and wide enough to read as connected to the
+            // sleeves — the body's own bare-lemon color is filled in pink
+            // below this (see `princessBodyFill`), so there's no gap left
+            // to bridge with a separate shape. Sits well clear of the mouth.
+            Ellipse()
+                .fill(white)
+                .overlay(Ellipse().stroke(trim, lineWidth: 2.5))
+                .frame(width: 140, height: 50)
+                .offset(y: 38)
+
+            // Skirt, now entirely white.
+            PrincessSkirtShape()
+                .fill(white)
+                .overlay(PrincessSkirtShape().stroke(trim, lineWidth: 2.5))
+                .frame(width: 180, height: 100)
+                .offset(y: 106)
+
+            Circle()
+                .fill(jewelBlue)
+                .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 1))
+                .frame(width: 10, height: 10)
+                .offset(y: 18)
+        }
     }
 
     /// A smaller lemon character that rides along after Baby Lemon is
@@ -1408,7 +1507,7 @@ struct HelpView: View {
         ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
         ComboHint(id: "runner", emoji: "🏃", name: "Runner", sequence: "➡️ ➡️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 6, alwaysRevealed: false, isEnabled: false),
         ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", sequence: "⬆️ ⬆️ ⬆️ ⬇️ ⬇️ ⬇️ then Twirl!", pressCount: 7, alwaysRevealed: false),
-        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬇️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false, isEnabled: false)
+        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬇️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false)
     ]
 
     var body: some View {
