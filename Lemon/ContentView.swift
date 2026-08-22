@@ -388,7 +388,7 @@ struct ContentView: View {
         Combo(id: "marble", sequence: [.direction(.up), .direction(.down), .direction(.up), .direction(.down), .direction(.left), .direction(.right), .direction(.left), .direction(.right)], kind: .transform(.marble), isEnabled: false),
         Combo(id: "lemonShark", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.lemonShark), isEnabled: false),
         Combo(id: "runner", sequence: [.direction(.right), .direction(.right), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.runner), isEnabled: false),
-        Combo(id: "babyLemon", sequence: [.direction(.up), .direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.down), .twirl], kind: .addBabyLemon, isEnabled: false),
+        Combo(id: "babyLemon", sequence: [.direction(.up), .direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.down), .twirl], kind: .addBabyLemon),
         Combo(id: "princessDress", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.down), .direction(.up), .twirl], kind: .transform(.princess), isEnabled: false)
     ]
 
@@ -501,22 +501,26 @@ struct ContentView: View {
         .buttonStyle(.plain)
     }
 
-    private var bodyShape: AnyShape {
-        currentForm.isPitcher ? AnyShape(PitcherShape()) : AnyShape(LemonShape())
-    }
+    /// Builds a complete character — body, face, form-specific decorations,
+    /// arms and legs — for any `Fruit`. Driven entirely by the `form`
+    /// parameter (never `currentForm` directly) plus the shared arm/leg/face
+    /// animation state, so it produces an identical result whether it's
+    /// rendering the main character or (scaled down) `babyLemonCompanion`.
+    /// This is what makes the baby an exact, automatically up-to-date
+    /// replica of whatever form the main lemon currently is, including any
+    /// forms added later.
+    private func characterBody(form: Fruit) -> some View {
+        let colors = form.bodyColors
+        let bodyShape: AnyShape = form.isPitcher ? AnyShape(PitcherShape()) : AnyShape(LemonShape())
 
-    /// Not private: PreviewGallery.swift renders this directly (without the
-    /// surrounding scene chrome) to preview individual forms at a glance.
-    var lemonCharacter: some View {
-        let colors = currentForm.bodyColors
         return ZStack {
             // Behind the body so the handle's joints are hidden by the wall.
-            if currentForm.isPitcher {
-                pitcherHandle
+            if form.isPitcher {
+                pitcherHandle(colors: colors)
             }
 
-            if currentForm.isPitcher {
-                pitcherGlassBody
+            if form.isPitcher {
+                pitcherGlassBody(colors: colors, bodyShape: bodyShape)
             } else {
                 bodyShape
                     .fill(
@@ -534,29 +538,29 @@ struct ContentView: View {
                             .frame(width: 260, height: 220)
                     )
 
-                if currentForm.isDog {
-                    dogFacePatch
-                } else if currentForm.isCat {
-                    catFacePatch
+                if form.isDog {
+                    dogFacePatch(bodyShape: bodyShape)
+                } else if form.isCat {
+                    catFacePatch(bodyShape: bodyShape)
                 }
             }
 
             face
 
-            if currentForm.hasBeard {
+            if form.hasBeard {
                 beardAndMoustache
             }
-            if currentForm.isCat {
+            if form.isCat {
                 whiskers
             }
 
-            if currentForm.isDog {
-                dogEars
-            } else if currentForm.isCat {
+            if form.isDog {
+                dogEars(colors: colors)
+            } else if form.isCat {
                 catEars
-            } else if currentForm.isPitcher {
-                pitcherTrim
-            } else if currentForm.hasPrincessDress {
+            } else if form.isPitcher {
+                pitcherTrim(colors: colors)
+            } else if form.hasPrincessDress {
                 tiara
             } else {
                 // little nub on top
@@ -565,28 +569,36 @@ struct ContentView: View {
                     .frame(width: 14, height: 10)
                     .offset(y: -112)
 
-                if currentForm.hasSharkFin {
-                    sharkFin
-                } else if currentForm.usesFlower {
+                if form.hasSharkFin {
+                    sharkFin(colors: colors)
+                } else if form.usesFlower {
                     flower
                 } else {
                     leaf
                 }
             }
 
-            if currentForm.hasSharkFin {
-                sharkTail
+            if form.hasSharkFin {
+                sharkTail(colors: colors)
             }
 
-            arms
-            legs
+            arms(colors: colors)
+            legs(colors: colors)
 
-            if currentForm.hasRunningShoes {
+            if form.hasRunningShoes {
                 runningShoes
             }
-            if currentForm.hasPrincessDress {
+            if form.hasPrincessDress {
                 princessDress
             }
+        }
+    }
+
+    /// Not private: PreviewGallery.swift renders this directly (without the
+    /// surrounding scene chrome) to preview individual forms at a glance.
+    var lemonCharacter: some View {
+        ZStack {
+            characterBody(form: currentForm)
 
             if showBabyLemon {
                 babyLemonCompanion
@@ -623,7 +635,7 @@ struct ContentView: View {
 
     /// Dark patch over one side of the head for Ruby's asymmetric coloring,
     /// clipped to the body silhouette so it never spills past the outline.
-    private var dogFacePatch: some View {
+    private func dogFacePatch(bodyShape: AnyShape) -> some View {
         Ellipse()
             .fill(Color(red: 0.55, green: 0.55, blue: 0.58))
             .frame(width: 150, height: 170)
@@ -632,15 +644,15 @@ struct ContentView: View {
             .clipShape(bodyShape)
     }
 
-    private var dogEars: some View {
+    private func dogEars(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
         ZStack {
             Ellipse()
-                .fill(currentForm.bodyColors.dark)
+                .fill(colors.dark)
                 .frame(width: 52, height: 92)
                 .rotationEffect(.degrees(-18))
                 .offset(x: -112, y: -66)
             Ellipse()
-                .fill(currentForm.bodyColors.dark)
+                .fill(colors.dark)
                 .frame(width: 52, height: 92)
                 .rotationEffect(.degrees(18))
                 .offset(x: 112, y: -66)
@@ -648,7 +660,7 @@ struct ContentView: View {
     }
 
     /// Black mask with a white blaze down the middle, clipped to the body silhouette.
-    private var catFacePatch: some View {
+    private func catFacePatch(bodyShape: AnyShape) -> some View {
         ZStack {
             Ellipse()
                 .fill(Color(red: 0.15, green: 0.15, blue: 0.17))
@@ -718,18 +730,18 @@ struct ContentView: View {
         .offset(y: -10)
     }
 
-    private var sharkFin: some View {
+    private func sharkFin(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
         Triangle()
-            .fill(currentForm.bodyColors.dark)
-            .overlay(Triangle().stroke(currentForm.bodyColors.stroke, lineWidth: 2))
+            .fill(colors.dark)
+            .overlay(Triangle().stroke(colors.stroke, lineWidth: 2))
             .frame(width: 40, height: 50)
             .offset(y: -128)
     }
 
-    private var sharkTail: some View {
+    private func sharkTail(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
         Triangle()
-            .fill(currentForm.bodyColors.dark)
-            .overlay(Triangle().stroke(currentForm.bodyColors.stroke, lineWidth: 2))
+            .fill(colors.dark)
+            .overlay(Triangle().stroke(colors.stroke, lineWidth: 2))
             .frame(width: 34, height: 56)
             .rotationEffect(.degrees(100))
             .offset(x: 128, y: 10)
@@ -776,47 +788,26 @@ struct ContentView: View {
             .offset(y: 78)
     }
 
-    /// A smaller lemon character that rides along after Baby Lemon is discovered.
+    /// A smaller lemon character that rides along after Baby Lemon is
+    /// discovered. Reuses `characterBody(form:)` — the exact same body,
+    /// face, decorations, arms and legs as the main character — scaled
+    /// down as a whole, so it's always an exact miniature of whatever form
+    /// the main lemon currently is (including any forms added later) and
+    /// mirrors every dance, flex, and twirl in sync. The whole-body moves
+    /// (jumps, spins, the wake pulse) already apply automatically since
+    /// this view is a child inside `lemonCharacter`'s transformed group.
     private var babyLemonCompanion: some View {
-        ZStack {
-            LemonShape()
-                .fill(
-                    RadialGradient(
-                        colors: [Color(red: 1.0, green: 0.93, blue: 0.35), Color(red: 0.98, green: 0.78, blue: 0.1)],
-                        center: .center,
-                        startRadius: 4,
-                        endRadius: 60
-                    )
-                )
-                .frame(width: 88, height: 74)
-                .overlay(
-                    LemonShape()
-                        .stroke(Color(red: 0.75, green: 0.58, blue: 0.05), lineWidth: 2)
-                        .frame(width: 88, height: 74)
-                )
-
-            HStack(spacing: 12) {
-                Circle().fill(Color(red: 0.35, green: 0.24, blue: 0.05)).frame(width: 6, height: 6)
-                Circle().fill(Color(red: 0.35, green: 0.24, blue: 0.05)).frame(width: 6, height: 6)
-            }
-            .offset(y: -4)
-
-            Ellipse()
-                .fill(Color(red: 0.36, green: 0.62, blue: 0.24))
-                .frame(width: 16, height: 8)
-                .rotationEffect(.degrees(-30))
-                .offset(y: -38)
-        }
-        .offset(x: 95, y: 78)
+        characterBody(form: currentForm)
+            .scaleEffect(0.34)
+            .offset(x: 95, y: 78)
     }
 
     /// The pitcher's body: lemonade filling the lower two-thirds, a pale
     /// translucent glass sheen over the whole silhouette so both the liquid
     /// and the empty headspace above it read as glass, and a couple of
     /// diagonal highlight streaks for the reflection.
-    private var pitcherGlassBody: some View {
-        let colors = currentForm.bodyColors
-        return ZStack {
+    private func pitcherGlassBody(colors: (light: Color, dark: Color, stroke: Color), bodyShape: AnyShape) -> some View {
+        ZStack {
             bodyShape
                 .fill(
                     LinearGradient(
@@ -879,9 +870,8 @@ struct ContentView: View {
     }
 
     /// Handle loop, stroked twice so it reads as an outlined band.
-    private var pitcherHandle: some View {
-        let colors = currentForm.bodyColors
-        return ZStack {
+    private func pitcherHandle(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        ZStack {
             PitcherHandleShape()
                 .stroke(colors.stroke, style: StrokeStyle(lineWidth: 24, lineCap: .butt))
                 .frame(width: 260, height: 220)
@@ -892,9 +882,8 @@ struct ContentView: View {
     }
 
     /// Rim, spout and the lemonade sitting in it.
-    private var pitcherTrim: some View {
-        let colors = currentForm.bodyColors
-        return ZStack {
+    private func pitcherTrim(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        ZStack {
             PitcherRimShape()
                 .fill(colors.dark)
                 .frame(width: 218, height: 34)
@@ -987,11 +976,11 @@ struct ContentView: View {
         }
     }
 
-    private var arms: some View {
+    private func arms(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
         ZStack {
-            arm(angle: leftArmAngle, forearmAngle: leftForearmAngle, side: -1)
+            arm(angle: leftArmAngle, forearmAngle: leftForearmAngle, side: -1, colors: colors)
                 .offset(x: -118, y: -8)
-            arm(angle: rightArmAngle, forearmAngle: rightForearmAngle, side: 1)
+            arm(angle: rightArmAngle, forearmAngle: rightForearmAngle, side: 1, colors: colors)
                 .offset(x: 118, y: -8)
         }
     }
@@ -999,9 +988,11 @@ struct ContentView: View {
     /// One arm, hanging from a shoulder pivot at the top of its 12x56 layout box.
     /// `angle` swings the whole arm at the shoulder, `forearmAngle` bends it at the elbow.
     /// `side` is -1 for the left arm and 1 for the right, so the bicep bulges outward.
-    private func arm(angle: Double, forearmAngle: Double, side: Double) -> some View {
-        let colors = currentForm.bodyColors
-        return VStack(spacing: 0) {
+    /// `colors` is passed in (rather than read from `currentForm`) so `babyLemonCompanion`
+    /// can reuse this exact geometry with fixed lemon colors while mirroring the same
+    /// angle/muscle state as the main character's arms.
+    private func arm(angle: Double, forearmAngle: Double, side: Double, colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        VStack(spacing: 0) {
             // Upper arm.
             ZStack {
                 Capsule()
@@ -1009,7 +1000,7 @@ struct ContentView: View {
                     .frame(width: 12, height: 34)
 
                 if showMuscles {
-                    bicep(side: side)
+                    bicep(side: side, colors: colors)
                 }
             }
             .frame(width: 12, height: 34)
@@ -1038,9 +1029,8 @@ struct ContentView: View {
     }
 
     /// Cartoon bicep bulge that pops onto the upper arm during the flex.
-    private func bicep(side: Double) -> some View {
-        let colors = currentForm.bodyColors
-        return ZStack {
+    private func bicep(side: Double, colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        ZStack {
             Ellipse()
                 .fill(colors.dark)
                 .frame(width: 42, height: 34)
@@ -1059,14 +1049,14 @@ struct ContentView: View {
         .transition(.scale(scale: 0.2).combined(with: .opacity))
     }
 
-    private var legs: some View {
+    private func legs(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
         ZStack {
             Capsule()
-                .fill(currentForm.bodyColors.stroke)
+                .fill(colors.stroke)
                 .frame(width: 10, height: 26)
                 .offset(x: -23 + leftLegOffset.width, y: 105 + leftLegOffset.height)
             Capsule()
-                .fill(currentForm.bodyColors.stroke)
+                .fill(colors.stroke)
                 .frame(width: 10, height: 26)
                 .offset(x: 23 + rightLegOffset.width, y: 105 + rightLegOffset.height)
         }
@@ -1417,7 +1407,7 @@ struct HelpView: View {
         ComboHint(id: "marble", emoji: "🐱", name: "Marble", sequence: "⬆️ ⬇️ ⬆️ ⬇️ ⬅️ ➡️ ⬅️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
         ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
         ComboHint(id: "runner", emoji: "🏃", name: "Runner", sequence: "➡️ ➡️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 6, alwaysRevealed: false, isEnabled: false),
-        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", sequence: "⬆️ ⬆️ ⬆️ ⬇️ ⬇️ ⬇️ then Twirl!", pressCount: 7, alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", sequence: "⬆️ ⬆️ ⬆️ ⬇️ ⬇️ ⬇️ then Twirl!", pressCount: 7, alwaysRevealed: false),
         ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬇️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false, isEnabled: false)
     ]
 
