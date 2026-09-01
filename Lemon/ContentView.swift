@@ -350,6 +350,7 @@ struct Combo {
 
 enum ComboDiscovery {
     private static func key(_ id: String) -> String { "comboDiscovered_\(id)" }
+    private static func hintKey(_ id: String) -> String { "comboHintCount_\(id)" }
 
     static func isDiscovered(_ id: String) -> Bool {
         UserDefaults.standard.bool(forKey: key(id))
@@ -359,8 +360,21 @@ enum ComboDiscovery {
         UserDefaults.standard.set(true, forKey: key(id))
     }
 
+    /// How many steps of the combo's sequence the player has revealed via
+    /// the "Hint" button, from the start of the sequence.
+    static func hintCount(_ id: String) -> Int {
+        UserDefaults.standard.integer(forKey: hintKey(id))
+    }
+
+    /// Reveals one more step, up to `total` (the full sequence length).
+    static func revealNextHint(_ id: String, total: Int) {
+        let next = min(hintCount(id) + 1, total)
+        UserDefaults.standard.set(next, forKey: hintKey(id))
+    }
+
     static func reset(_ id: String) {
         UserDefaults.standard.removeObject(forKey: key(id))
+        UserDefaults.standard.removeObject(forKey: hintKey(id))
     }
 }
 
@@ -1479,13 +1493,18 @@ private struct ComboHint: Identifiable {
     let id: String
     let emoji: String
     let name: String
-    let sequence: String
-    let pressCount: Int
+    /// One entry per press — arrows plus a final "then Twirl!" for combos
+    /// that end on the twirl button — so the "Hint" button can reveal them
+    /// one at a time instead of spoiling the whole sequence at once.
+    let steps: [String]
     /// Lemon Power is shown to get players started; the rest stay "???" until discovered.
     let alwaysRevealed: Bool
     /// Mirrors the matching `Combo.isEnabled` in ContentView — combos being
     /// reworked are hidden here too rather than just uncompletable.
     var isEnabled: Bool = true
+
+    var pressCount: Int { steps.count }
+    var fullSequence: String { steps.joined(separator: " ") }
 }
 
 struct HelpView: View {
@@ -1494,21 +1513,29 @@ struct HelpView: View {
     @State private var showResetConfirmation = false
 
     private let hints: [ComboHint] = [
-        ComboHint(id: "lemonPower", emoji: "🍋", name: "Lemon Power", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ➡️ ➡️ then Twirl!", pressCount: 7, alwaysRevealed: true),
-        ComboHint(id: "clementine", emoji: "🍊", name: "Clementine", sequence: "⬆️ ⬆️ ⬇️ ⬇️ ⬅️ ⬅️ then Twirl!", pressCount: 7, alwaysRevealed: false),
-        ComboHint(id: "flex", emoji: "💪", name: "Strong Lemon", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ then Twirl!", pressCount: 7, alwaysRevealed: false),
-        ComboHint(id: "lime", emoji: "🍋‍🟩", name: "Lime", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 7, alwaysRevealed: false),
-        ComboHint(id: "lemonadePitcher", emoji: "🥤", name: "Lemonade Pitcher", sequence: "⬅️ ⬅️ ➡️ ➡️ ⬆️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false),
+        ComboHint(id: "lemonPower", emoji: "🍋", name: "Lemon Power", steps: ["⬆️", "⬆️", "⬇️", "⬇️", "➡️", "➡️", "then Twirl!"], alwaysRevealed: true),
+        ComboHint(id: "clementine", emoji: "🍊", name: "Clementine", steps: ["⬆️", "⬆️", "⬇️", "⬇️", "⬅️", "⬅️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "flex", emoji: "💪", name: "Strong Lemon", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬅️", "⬅️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "lime", emoji: "🍋‍🟩", name: "Lime", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "➡️", "➡️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "lemonadePitcher", emoji: "🥤", name: "Lemonade Pitcher", steps: ["⬅️", "⬅️", "➡️", "➡️", "⬆️", "⬆️", "then Twirl!"], alwaysRevealed: false),
         // Disabled for the App Store release while their graphics/tunes are
         // reworked — hidden from the list entirely, not just uncompletable.
-        ComboHint(id: "singleSingleDoubleDouble", emoji: "🧔", name: "Single Single Double Double", sequence: "⬅️ ➡️ ⬅️ ⬅️ ➡️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
-        ComboHint(id: "ruby", emoji: "🐶", name: "Ruby", sequence: "⬅️ ⬆️ ➡️ ⬇️ ⬅️ ⬆️ ➡️ ⬇️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
-        ComboHint(id: "marble", emoji: "🐱", name: "Marble", sequence: "⬆️ ⬇️ ⬆️ ⬇️ ⬅️ ➡️ ⬅️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
-        ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬅️ ⬅️ ➡️ ➡️", pressCount: 8, alwaysRevealed: false, isEnabled: false),
-        ComboHint(id: "runner", emoji: "🏃", name: "Runner", sequence: "➡️ ➡️ ⬆️ ➡️ ➡️ then Twirl!", pressCount: 6, alwaysRevealed: false, isEnabled: false),
-        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", sequence: "⬆️ ⬆️ ⬆️ ⬇️ ⬇️ ⬇️ then Twirl!", pressCount: 7, alwaysRevealed: false),
-        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", sequence: "⬇️ ⬇️ ⬆️ ⬆️ ⬇️ ⬆️ then Twirl!", pressCount: 7, alwaysRevealed: false)
+        ComboHint(id: "singleSingleDoubleDouble", emoji: "🧔", name: "Single Single Double Double", steps: ["⬅️", "➡️", "⬅️", "⬅️", "➡️", "⬅️", "➡️", "➡️"], alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "ruby", emoji: "🐶", name: "Ruby", steps: ["⬅️", "⬆️", "➡️", "⬇️", "⬅️", "⬆️", "➡️", "⬇️"], alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "marble", emoji: "🐱", name: "Marble", steps: ["⬆️", "⬇️", "⬆️", "⬇️", "⬅️", "➡️", "⬅️", "➡️"], alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬅️", "⬅️", "➡️", "➡️"], alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "runner", emoji: "🏃", name: "Runner", steps: ["➡️", "➡️", "⬆️", "➡️", "➡️", "then Twirl!"], alwaysRevealed: false, isEnabled: false),
+        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", steps: ["⬆️", "⬆️", "⬆️", "⬇️", "⬇️", "⬇️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬇️", "⬆️", "then Twirl!"], alwaysRevealed: false)
     ]
+
+    /// The revealed steps followed by a "❔" placeholder for each step the
+    /// player hasn't spent a hint tap on yet.
+    private func partialSequence(_ hint: ComboHint, revealedCount: Int) -> String {
+        let shown = Array(hint.steps.prefix(revealedCount))
+        let hidden = Array(repeating: "❔", count: hint.steps.count - revealedCount)
+        return (shown + hidden).joined(separator: " ")
+    }
 
     var body: some View {
         NavigationStack {
@@ -1528,16 +1555,33 @@ struct HelpView: View {
 
                     VStack(alignment: .leading, spacing: 14) {
                         ForEach(hints.filter(\.isEnabled)) { hint in
-                            let revealed = hint.alwaysRevealed || ComboDiscovery.isDiscovered(hint.id)
+                            let discovered = hint.alwaysRevealed || ComboDiscovery.isDiscovered(hint.id)
+                            let hintCount = ComboDiscovery.hintCount(hint.id)
+                            let revealed = discovered || hintCount >= hint.steps.count
                             HStack(alignment: .top, spacing: 12) {
                                 Text(hint.emoji)
                                     .font(.title2)
-                                VStack(alignment: .leading, spacing: 2) {
+                                VStack(alignment: .leading, spacing: 4) {
                                     Text(hint.name)
                                         .font(.headline)
-                                    Text(revealed ? hint.sequence : "??? · \(hint.pressCount) presses")
+                                    Text(revealed ? hint.fullSequence : (hintCount == 0 ? "??? · \(hint.pressCount) presses" : partialSequence(hint, revealedCount: hintCount)))
                                         .font(.subheadline)
                                         .foregroundStyle(revealed ? Color(red: 0.55, green: 0.42, blue: 0.05) : Color(red: 0.55, green: 0.42, blue: 0.05).opacity(0.6))
+
+                                    if !revealed {
+                                        Button {
+                                            ComboDiscovery.revealNextHint(hint.id, total: hint.steps.count)
+                                            discoveryRefresh.toggle()
+                                        } label: {
+                                            Text("💡 Hint (\(hintCount)/\(hint.pressCount))")
+                                                .font(.caption.weight(.bold))
+                                                .foregroundStyle(.white)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 6)
+                                                .background(Color(red: 0.85, green: 0.58, blue: 0.05), in: Capsule())
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
                                 }
                             }
                         }
