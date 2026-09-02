@@ -74,6 +74,32 @@ struct PrincessSkirtShape: Shape {
     }
 }
 
+/// A ring with a hole punched out of the lower-middle (rather than dead
+/// center) so the face has clear room to sit above it. Fill with
+/// `FillStyle(eoFill: true)` so the hole actually cuts through.
+struct DonutShape: Shape {
+    /// Shrinks the outer edge in from `rect` while the hole stays anchored
+    /// to the original `rect` — lets a frosting layer sit inset from the
+    /// dough's outer rim without its hole drifting out of alignment.
+    var outerInset: CGFloat = 0
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addEllipse(in: rect.insetBy(dx: outerInset, dy: outerInset))
+
+        let holeSize = min(rect.width, rect.height) * 0.28
+        let holeRect = CGRect(
+            x: rect.midX - holeSize / 2,
+            y: rect.midY - holeSize / 2 + rect.height * 0.1,
+            width: holeSize,
+            height: holeSize
+        )
+        path.addEllipse(in: holeRect)
+
+        return path
+    }
+}
+
 enum DanceDirection: CaseIterable, Equatable {
     case up, down, left, right
 
@@ -243,11 +269,17 @@ enum Tune {
     static let babyLemon: [Double] = [1046.50, 659.25, 783.99, 1046.50]
     /// Rising arpeggio with a glittery flourish — Princess.
     static let princess: [Double] = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50]
+    /// Bouncy, sugary little jingle — Donut.
+    static let donut: [Double] = [587.33, 587.33, 880.00, 783.99, 659.25, 880.00]
+    /// A crisp little "crunch and polish" riff — Apple.
+    static let apple: [Double] = [659.25, 783.99, 987.77, 880.00, 987.77, 1174.66]
+    /// A tarter, brighter variant of Apple's riff — Green Apple.
+    static let greenApple: [Double] = [698.46, 830.61, 1046.50, 932.33, 1046.50, 1244.51]
 }
 
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
-    case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess
+    case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple
 
     var bodyColors: (light: Color, dark: Color, stroke: Color) {
         switch self {
@@ -271,6 +303,15 @@ enum Fruit: Equatable {
         case .lemonShark:
             // Tan-gray, like the real fish this is punning on.
             return (Color(red: 0.88, green: 0.82, blue: 0.5), Color(red: 0.72, green: 0.65, blue: 0.32), Color(red: 0.5, green: 0.44, blue: 0.2))
+        case .donut:
+            // Strawberry frosting covers the whole ring, so light/dark are
+            // frosting tones; stroke stays a baked-dough brown for the rim
+            // outline and the arms/legs, so the limbs still read as dough.
+            return (Color(red: 1.0, green: 0.68, blue: 0.8), Color(red: 0.93, green: 0.4, blue: 0.6), Color(red: 0.55, green: 0.38, blue: 0.22))
+        case .apple:
+            return (Color(red: 0.95, green: 0.22, blue: 0.24), Color(red: 0.72, green: 0.06, blue: 0.12), Color(red: 0.42, green: 0.06, blue: 0.08))
+        case .greenApple:
+            return (Color(red: 0.75, green: 0.88, blue: 0.35), Color(red: 0.52, green: 0.72, blue: 0.16), Color(red: 0.3, green: 0.44, blue: 0.09))
         }
     }
 
@@ -282,6 +323,10 @@ enum Fruit: Equatable {
     var hasBeard: Bool { self == .singleSingleDoubleDouble }
     var hasRunningShoes: Bool { self == .runner }
     var hasPrincessDress: Bool { self == .princess }
+    var isDonut: Bool { self == .donut }
+    /// Gets a brown stem instead of the usual round nub, plus a glossy
+    /// highlight on the body.
+    var isApple: Bool { self == .apple || self == .greenApple }
 
     var name: String {
         switch self {
@@ -295,6 +340,9 @@ enum Fruit: Equatable {
         case .lemonShark: return "Lemon Shark"
         case .runner: return "Runner"
         case .princess: return "Princess"
+        case .donut: return "Donut"
+        case .apple: return "Apple"
+        case .greenApple: return "Green Apple"
         }
     }
 
@@ -311,6 +359,9 @@ enum Fruit: Equatable {
         case .lemonShark: return Tune.lemonShark
         case .runner: return Tune.runner
         case .princess: return Tune.princess
+        case .donut: return Tune.donut
+        case .apple: return Tune.apple
+        case .greenApple: return Tune.greenApple
         }
     }
 
@@ -326,6 +377,9 @@ enum Fruit: Equatable {
         case .lemonShark: return "🦈 LEMON SHARK! 🦈"
         case .runner: return "🏃 GO GO GO! 🏃"
         case .princess: return "👑 ROYAL LEMON! 👑"
+        case .donut: return "🍩 DONUT TIME! 🍩"
+        case .apple: return "🍎 SHINY RED APPLE! 🍎"
+        case .greenApple: return "🍏 SHINY GREEN APPLE! 🍏"
         }
     }
 }
@@ -433,7 +487,11 @@ struct ContentView: View {
         Combo(id: "lemonShark", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .direction(.right), .direction(.right)], kind: .transform(.lemonShark), isEnabled: false),
         Combo(id: "runner", sequence: [.direction(.right), .direction(.right), .direction(.up), .direction(.right), .direction(.right), .twirl], kind: .transform(.runner), isEnabled: false),
         Combo(id: "babyLemon", sequence: [.direction(.up), .direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.down), .twirl], kind: .addBabyLemon),
-        Combo(id: "princessDress", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.down), .direction(.up), .twirl], kind: .transform(.princess))
+        Combo(id: "princessDress", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.down), .direction(.up), .twirl], kind: .transform(.princess)),
+        Combo(id: "donut", sequence: [.direction(.right), .direction(.right), .direction(.down), .direction(.down), .direction(.left), .direction(.left), .twirl], kind: .transform(.donut)),
+        // New — disabled until the graphics are verified.
+        Combo(id: "apple", sequence: [.direction(.left), .direction(.left), .direction(.down), .direction(.down), .direction(.right), .direction(.right), .twirl], kind: .transform(.apple)),
+        Combo(id: "greenApple", sequence: [.direction(.down), .direction(.down), .direction(.left), .direction(.left), .direction(.up), .direction(.up), .twirl], kind: .transform(.greenApple))
     ]
 
     /// What `recordInput` actually checks against — combos still being
@@ -565,6 +623,8 @@ struct ContentView: View {
 
             if form.isPitcher {
                 pitcherGlassBody(colors: colors, bodyShape: bodyShape)
+            } else if form.isDonut {
+                donutBody(colors: colors)
             } else {
                 bodyShape
                     .fill(
@@ -588,10 +648,12 @@ struct ContentView: View {
                     catFacePatch(bodyShape: bodyShape)
                 } else if form.hasPrincessDress {
                     princessBodyFill(bodyShape: bodyShape)
+                } else if form.isApple {
+                    appleShine
                 }
             }
 
-            face
+            face(yOffset: form.isDonut ? -34 : -10)
 
             if form.hasBeard {
                 beardAndMoustache
@@ -606,12 +668,19 @@ struct ContentView: View {
                 catEars
             } else if form.isPitcher {
                 pitcherTrim(colors: colors)
+            } else if form.isDonut {
+                // The frosting cap already reads as the "top" detail —
+                // no nub/leaf needed.
             } else {
-                // little nub on top
-                Ellipse()
-                    .fill(colors.stroke)
-                    .frame(width: 14, height: 10)
-                    .offset(y: -112)
+                if form.isApple {
+                    stem(colors: colors)
+                } else {
+                    // little nub on top
+                    Ellipse()
+                        .fill(colors.stroke)
+                        .frame(width: 14, height: 10)
+                        .offset(y: -112)
+                }
 
                 if form.hasSharkFin {
                     sharkFin(colors: colors)
@@ -665,6 +734,32 @@ struct ContentView: View {
             .frame(width: 46, height: 22)
             .rotationEffect(.degrees(-30))
             .offset(x: 20, y: -118)
+    }
+
+    /// A short woody stem in place of the usual round nub, for Apple.
+    private func stem(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        Capsule()
+            .fill(colors.stroke)
+            .frame(width: 8, height: 24)
+            .rotationEffect(.degrees(-8))
+            .offset(x: -4, y: -118)
+    }
+
+    /// A couple of glossy highlight streaks so the apple's skin reads as
+    /// shiny rather than flat.
+    private var appleShine: some View {
+        ZStack {
+            Capsule()
+                .fill(Color.white.opacity(0.55))
+                .frame(width: 16, height: 60)
+                .rotationEffect(.degrees(-18))
+                .offset(x: -58, y: -42)
+            Capsule()
+                .fill(Color.white.opacity(0.35))
+                .frame(width: 8, height: 28)
+                .rotationEffect(.degrees(-18))
+                .offset(x: -34, y: -34)
+        }
     }
 
     private var flower: some View {
@@ -1025,6 +1120,75 @@ struct ContentView: View {
         }
     }
 
+    /// Strawberry-frosted donut: a baked-dough ring with a punched-out
+    /// hole, a drippy frosting cap on top, and a scatter of sprinkles.
+    private func donutBody(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        // Baked-dough tones for the rim that peeks out past the frosting.
+        let doughLight = Color(red: 0.94, green: 0.78, blue: 0.56)
+        let doughDark = Color(red: 0.85, green: 0.63, blue: 0.4)
+        let frostingShine = Color(red: 1.0, green: 0.85, blue: 0.9)
+        let sprinkleColors: [Color] = [
+            Color(red: 0.98, green: 0.78, blue: 0.15),
+            Color(red: 0.35, green: 0.65, blue: 0.95),
+            Color(red: 0.55, green: 0.8, blue: 0.35),
+            Color(red: 0.95, green: 0.95, blue: 0.98),
+            Color(red: 0.65, green: 0.4, blue: 0.85)
+        ]
+        // Spread across the frosted area, steering clear of the face
+        // (upper middle), the hole (lower middle), and the bare dough rim
+        // now showing around the outer edge.
+        let sprinkles: [(x: CGFloat, y: CGFloat, angle: Double, color: Int)] = [
+            (-70, -64, 15, 0), (-44, -74, -25, 1), (0, -78, 50, 2), (40, -72, -10, 3), (70, -60, 30, 4),
+            (-82, -28, 60, 2), (-76, 8, -30, 0), (-64, 42, 20, 3), (-38, 66, -45, 1), (0, 70, 35, 4),
+            (38, 67, -20, 0), (64, 45, 40, 2), (76, 10, -15, 3), (80, -26, 25, 1),
+            (-22, -53, 10, 4), (22, -51, -35, 0), (50, 16, 50, 1), (-50, 19, -10, 3)
+        ]
+        return ZStack {
+            // Dough base, full size — this is what shows at the outer rim.
+            DonutShape()
+                .fill(
+                    RadialGradient(colors: [doughLight, doughDark], center: .center, startRadius: 10, endRadius: 160),
+                    style: FillStyle(eoFill: true)
+                )
+                .frame(width: 260, height: 220)
+                .overlay(
+                    DonutShape()
+                        .stroke(colors.stroke, lineWidth: 3)
+                        .frame(width: 260, height: 220)
+                )
+
+            // Frosting, inset from the outer edge so a ring of dough shows
+            // around it — the hole stays anchored to the same spot as the
+            // dough base's hole since `outerInset` only shrinks the outside.
+            DonutShape(outerInset: 20)
+                .fill(
+                    RadialGradient(colors: [colors.light, colors.dark], center: .center, startRadius: 10, endRadius: 160),
+                    style: FillStyle(eoFill: true)
+                )
+                .frame(width: 260, height: 220)
+                .overlay(
+                    DonutShape(outerInset: 20)
+                        .stroke(colors.stroke.opacity(0.7), lineWidth: 2)
+                        .frame(width: 260, height: 220)
+                )
+
+            // Shine streak on the frosting.
+            Capsule()
+                .fill(frostingShine.opacity(0.7))
+                .frame(width: 10, height: 36)
+                .rotationEffect(.degrees(-20))
+                .offset(x: -52, y: -68)
+
+            ForEach(Array(sprinkles.enumerated()), id: \.offset) { _, sprinkle in
+                Capsule()
+                    .fill(sprinkleColors[sprinkle.color])
+                    .frame(width: 14, height: 4)
+                    .rotationEffect(.degrees(sprinkle.angle))
+                    .offset(x: sprinkle.x, y: sprinkle.y)
+            }
+        }
+    }
+
     private var partyLights: some View {
         ZStack {
             ForEach(0..<12, id: \.self) { i in
@@ -1050,7 +1214,7 @@ struct ContentView: View {
         return CGSize(width: cos(angle) * radius, height: sin(angle) * radius)
     }
 
-    private var face: some View {
+    private func face(yOffset: CGFloat = -10) -> some View {
         VStack(spacing: 10) {
             HStack(spacing: 36) {
                 eye
@@ -1058,7 +1222,7 @@ struct ContentView: View {
             }
             mouth
         }
-        .offset(y: -10)
+        .offset(y: yOffset)
     }
 
     private var eye: some View {
@@ -1526,7 +1690,10 @@ struct HelpView: View {
         ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬅️", "⬅️", "➡️", "➡️"], alwaysRevealed: false, isEnabled: false),
         ComboHint(id: "runner", emoji: "🏃", name: "Runner", steps: ["➡️", "➡️", "⬆️", "➡️", "➡️", "then Twirl!"], alwaysRevealed: false, isEnabled: false),
         ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", steps: ["⬆️", "⬆️", "⬆️", "⬇️", "⬇️", "⬇️", "then Twirl!"], alwaysRevealed: false),
-        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬇️", "⬆️", "then Twirl!"], alwaysRevealed: false)
+        ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬇️", "⬆️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "donut", emoji: "🍩", name: "Donut", steps: ["➡️", "➡️", "⬇️", "⬇️", "⬅️", "⬅️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "apple", emoji: "🍎", name: "Apple", steps: ["⬅️", "⬅️", "⬇️", "⬇️", "➡️", "➡️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "greenApple", emoji: "🍏", name: "Green Apple", steps: ["⬇️", "⬇️", "⬅️", "⬅️", "⬆️", "⬆️", "then Twirl!"], alwaysRevealed: false)
     ]
 
     /// The revealed steps followed by a "❔" placeholder for each step the
