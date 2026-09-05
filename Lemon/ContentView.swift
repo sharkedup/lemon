@@ -141,6 +141,62 @@ struct TennisSeamShape: Shape {
     }
 }
 
+/// A regular, point-up pentagon — the central patch of a soccer ball.
+struct PentagonShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) * 0.16
+
+        for i in 0..<5 {
+            let angle = Angle(degrees: -90 + Double(i) * 72).radians
+            let point = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
+            if i == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Thin seam lines connecting the nearest corners of adjoining panels —
+/// two from the central pentagon out to each surrounding panel, and one
+/// between each pair of neighboring panels — so the pattern reads as one
+/// stitched ball rather than separate floating shapes. Computed once for
+/// the panel at -54° and rotated by 72° steps for the other four, matching
+/// the layout's 5-fold symmetry.
+struct SoccerLinksShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let baseSegments: [(CGPoint, CGPoint)] = [
+            (CGPoint(x: 0, y: -48), CGPoint(x: 10.19, y: -62.02)),
+            (CGPoint(x: 45.65, y: -14.83), CGPoint(x: 55.84, y: -28.86)),
+            (CGPoint(x: 55.84, y: -28.86), CGPoint(x: 62.14, y: -9.48))
+        ]
+
+        for i in 0..<5 {
+            let rotation = Angle(degrees: Double(i) * 72).radians
+            for (a, b) in baseSegments {
+                let ra = rotated(a, by: rotation)
+                let rb = rotated(b, by: rotation)
+                path.move(to: CGPoint(x: center.x + ra.x, y: center.y + ra.y))
+                path.addLine(to: CGPoint(x: center.x + rb.x, y: center.y + rb.y))
+            }
+        }
+        return path
+    }
+
+    private func rotated(_ point: CGPoint, by radians: Double) -> CGPoint {
+        let cosA = cos(radians)
+        let sinA = sin(radians)
+        return CGPoint(x: point.x * cosA - point.y * sinA, y: point.x * sinA + point.y * cosA)
+    }
+}
+
 enum DanceDirection: CaseIterable, Equatable {
     case up, down, left, right
 
@@ -322,11 +378,13 @@ enum Tune {
     static let tennisBall: [Double] = [523.25, 392.00, 523.25, 392.00, 659.25, 493.88]
     /// A light, cheerful little skip — Daisy.
     static let daisy: [Double] = [659.25, 739.99, 830.61, 739.99, 987.77, 880.00]
+    /// A punchy, kicking-off riff — Soccer Ball.
+    static let soccerBall: [Double] = [440.00, 440.00, 587.33, 523.25, 698.46, 587.33]
 }
 
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
-    case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple, coolLemon, tennisBall, daisy
+    case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple, coolLemon, tennisBall, daisy, soccerBall
 
     var bodyColors: (light: Color, dark: Color, stroke: Color) {
         switch self {
@@ -367,6 +425,10 @@ enum Fruit: Equatable {
             // Rich golden center; the white petals are drawn separately in
             // `daisyPetals`.
             return (Color(red: 1.0, green: 0.82, blue: 0.15), Color(red: 0.92, green: 0.65, blue: 0.05), Color(red: 0.62, green: 0.42, blue: 0.04))
+        case .soccerBall:
+            // Off-white panels; the black pentagon pattern is drawn
+            // separately in `soccerPattern`.
+            return (Color(red: 0.98, green: 0.98, blue: 0.98), Color(red: 0.85, green: 0.85, blue: 0.87), Color(red: 0.2, green: 0.2, blue: 0.22))
         }
     }
 
@@ -385,6 +447,7 @@ enum Fruit: Equatable {
     var hasSunglasses: Bool { self == .coolLemon }
     var isTennisBall: Bool { self == .tennisBall }
     var isDaisy: Bool { self == .daisy }
+    var isSoccerBall: Bool { self == .soccerBall }
 
     var name: String {
         switch self {
@@ -404,6 +467,7 @@ enum Fruit: Equatable {
         case .coolLemon: return "Cool Lemon"
         case .tennisBall: return "Tennis Ball"
         case .daisy: return "Daisy"
+        case .soccerBall: return "Soccer Ball"
         }
     }
 
@@ -426,6 +490,7 @@ enum Fruit: Equatable {
         case .coolLemon: return Tune.coolLemon
         case .tennisBall: return Tune.tennisBall
         case .daisy: return Tune.daisy
+        case .soccerBall: return Tune.soccerBall
         }
     }
 
@@ -447,6 +512,7 @@ enum Fruit: Equatable {
         case .coolLemon: return "😎 COOL LEMON! 😎"
         case .tennisBall: return "🎾 TENNIS BALL! 🎾"
         case .daisy: return "🌼 DAISY! 🌼"
+        case .soccerBall: return "⚽ SOCCER BALL! ⚽"
         }
     }
 }
@@ -562,7 +628,9 @@ struct ContentView: View {
         Combo(id: "coolLemon", sequence: [.direction(.up), .direction(.up), .direction(.right), .direction(.right), .direction(.down), .direction(.down), .twirl], kind: .transform(.coolLemon)),
         Combo(id: "tennisBall", sequence: [.direction(.right), .direction(.right), .direction(.left), .direction(.left), .direction(.up), .direction(.up), .twirl], kind: .transform(.tennisBall)),
         // Ends on two twirls instead of one.
-        Combo(id: "daisy", sequence: [.direction(.left), .direction(.right), .direction(.up), .direction(.down), .direction(.left), .direction(.right), .twirl, .twirl], kind: .transform(.daisy))
+        Combo(id: "daisy", sequence: [.direction(.left), .direction(.right), .direction(.up), .direction(.down), .direction(.left), .direction(.right), .twirl, .twirl], kind: .transform(.daisy)),
+        // Shelved: the panel pattern isn't right yet — revisit later.
+        Combo(id: "soccerBall", sequence: [.direction(.down), .direction(.up), .direction(.left), .direction(.right), .direction(.down), .direction(.up), .twirl], kind: .transform(.soccerBall), isEnabled: false)
     ]
 
     /// What `recordInput` actually checks against — combos still being
@@ -731,10 +799,15 @@ struct ContentView: View {
                     appleShine
                 } else if form.isTennisBall {
                     tennisSeams(bodyShape: bodyShape)
+                } else if form.isSoccerBall {
+                    soccerPattern(bodyShape: bodyShape)
                 }
             }
 
-            face(yOffset: form.isDonut ? -34 : -10)
+            face(
+                yOffset: form.isDonut ? -34 : -10,
+                color: form.isSoccerBall ? Color.white : Color(red: 0.35, green: 0.24, blue: 0.05)
+            )
 
             if form.hasBeard {
                 beardAndMoustache
@@ -759,6 +832,8 @@ struct ContentView: View {
                 // The seam pattern is the identifying detail — no nub/leaf.
             } else if form.isDaisy {
                 // The petal ring already reads as the "top" detail.
+            } else if form.isSoccerBall {
+                // The pentagon pattern is the identifying detail — no nub/leaf.
             } else {
                 if form.isApple {
                     stem(colors: colors)
@@ -789,8 +864,11 @@ struct ContentView: View {
                 sharkTail(colors: colors)
             }
 
-            arms(colors: colors)
-            legs(colors: colors)
+            // Daisy's arms/legs are green (matching the leaf) rather than
+            // the golden center's own stroke color.
+            let limbColors = form.isDaisy ? (light: colors.light, dark: colors.dark, stroke: Color(red: 0.36, green: 0.62, blue: 0.24)) : colors
+            arms(colors: limbColors)
+            legs(colors: limbColors)
 
             if form.hasRunningShoes {
                 runningShoes
@@ -857,6 +935,35 @@ struct ContentView: View {
             .stroke(Color(red: 0.99, green: 0.93, blue: 0.9), style: StrokeStyle(lineWidth: 8, lineCap: .round))
             .frame(width: 260, height: 220)
             .clipShape(bodyShape)
+    }
+
+    /// A central black pentagon surrounded by six touching panels — the
+    /// classic soccer ball pattern, clipped to the body silhouette.
+    private func soccerPattern(bodyShape: AnyShape) -> some View {
+        let panelColor = Color(red: 0.14, green: 0.14, blue: 0.16)
+        // Placed at the center pentagon's edge-midpoint angles so each
+        // rotated petal nestles against a flat edge instead of a vertex.
+        let petalAngles: [Double] = [-54, 18, 90, 162, 234]
+
+        return ZStack {
+            SoccerLinksShape()
+                .stroke(panelColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .frame(width: 260, height: 220)
+            PentagonShape()
+                .fill(panelColor)
+                .frame(width: 300, height: 300)
+            ForEach(Array(petalAngles.enumerated()), id: \.offset) { _, angle in
+                let radians = Angle(degrees: angle).radians
+                PentagonShape()
+                    .fill(panelColor)
+                    .frame(width: 300, height: 300)
+                    .rotationEffect(.degrees(180))
+                    .offset(x: 95 * cos(radians), y: 95 * sin(radians))
+            }
+        }
+        .offset(y: -12)
+        .frame(width: 260, height: 220)
+        .clipShape(bodyShape)
     }
 
     private var flower: some View {
@@ -1361,40 +1468,40 @@ struct ContentView: View {
         return CGSize(width: cos(angle) * radius, height: sin(angle) * radius)
     }
 
-    private func face(yOffset: CGFloat = -10) -> some View {
+    private func face(yOffset: CGFloat = -10, color: Color = Color(red: 0.35, green: 0.24, blue: 0.05)) -> some View {
         VStack(spacing: 10) {
             HStack(spacing: 36) {
-                eye
-                eye
+                eye(color: color)
+                eye(color: color)
             }
-            mouth
+            mouth(color: color)
         }
         .offset(y: yOffset)
     }
 
-    private var eye: some View {
+    private func eye(color: Color) -> some View {
         Group {
             if isAwake {
                 Circle()
-                    .fill(Color(red: 0.35, green: 0.24, blue: 0.05))
+                    .fill(color)
                     .frame(width: 14, height: 14)
             } else {
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 0.35, green: 0.24, blue: 0.05))
+                    .fill(color)
                     .frame(width: 16, height: 3)
             }
         }
     }
 
-    private var mouth: some View {
+    private func mouth(color: Color) -> some View {
         Group {
             if isAwake {
                 Capsule()
-                    .fill(Color(red: 0.35, green: 0.24, blue: 0.05))
+                    .fill(color)
                     .frame(width: 34, height: 6)
             } else {
                 Circle()
-                    .fill(Color(red: 0.35, green: 0.24, blue: 0.05))
+                    .fill(color)
                     .frame(width: 8, height: 8)
             }
         }
@@ -1843,7 +1950,8 @@ struct HelpView: View {
         ComboHint(id: "greenApple", emoji: "🍏", name: "Green Apple", steps: ["⬇️", "⬇️", "⬅️", "⬅️", "⬆️", "⬆️", "then Twirl!"], alwaysRevealed: false),
         ComboHint(id: "coolLemon", emoji: "😎", name: "Cool Lemon", steps: ["⬆️", "⬆️", "➡️", "➡️", "⬇️", "⬇️", "then Twirl!"], alwaysRevealed: false),
         ComboHint(id: "tennisBall", emoji: "🎾", name: "Tennis Ball", steps: ["➡️", "➡️", "⬅️", "⬅️", "⬆️", "⬆️", "then Twirl!"], alwaysRevealed: false),
-        ComboHint(id: "daisy", emoji: "🌼", name: "Daisy", steps: ["⬅️", "➡️", "⬆️", "⬇️", "⬅️", "➡️", "then Twirl!", "Twirl again!"], alwaysRevealed: false)
+        ComboHint(id: "daisy", emoji: "🌼", name: "Daisy", steps: ["⬅️", "➡️", "⬆️", "⬇️", "⬅️", "➡️", "then Twirl!", "Twirl again!"], alwaysRevealed: false),
+        ComboHint(id: "soccerBall", emoji: "⚽", name: "Soccer Ball", steps: ["⬇️", "⬆️", "⬅️", "➡️", "⬇️", "⬆️", "then Twirl!"], alwaysRevealed: false, isEnabled: false)
     ]
 
     /// The revealed steps followed by a "❔" placeholder for each step the
