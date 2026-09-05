@@ -603,6 +603,22 @@ struct ContentView: View {
             Color(red: 0.98, green: 0.98, blue: 0.92)
                 .ignoresSafeArea()
 
+            if let banner = DebugSettings.bannerText {
+                VStack {
+                    Text(banner)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.6), in: Capsule())
+                        // Clear of the help button in the top-right corner.
+                        .padding(.top, 52)
+                    Spacer()
+                }
+                .zIndex(1)
+                .allowsHitTesting(false)
+            }
+
             GeometryReader { geo in
                 // Only scale up on iPad; on iPhone this is a no-op that renders
                 // exactly as it did before scaling existed, since the canvas
@@ -621,7 +637,10 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showHelp) {
-            HelpView()
+            HelpView(onPickForm: { form in
+                currentForm = form
+                isAwake = true
+            })
         }
     }
 
@@ -1874,6 +1893,8 @@ struct ContentView: View {
 }
 
 struct HelpView: View {
+    var onPickForm: (Fruit) -> Void = { _ in }
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var discoveryRefresh = false
@@ -1945,6 +1966,13 @@ struct HelpView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .padding(.top, 8)
+
+                    if DebugSettings.isAvailable {
+                        DebugPanel(
+                            onPickForm: onPickForm,
+                            onDismiss: { dismiss() }
+                        )
+                    }
                 }
                 .padding()
                 .foregroundStyle(Color(red: 0.35, green: 0.24, blue: 0.05))

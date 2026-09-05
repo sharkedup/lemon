@@ -73,6 +73,8 @@ git config core.hooksPath .githooks
 | `Lemon/ContentView.swift` | ~2000 lines: scene, all forms, help page |
 | `Lemon/Combos/ComboCatalog.swift` | Every combo — the single source of truth |
 | `Lemon/Events/Event.swift` | `Schedule`, `Event`, `EventClock`, `EventCatalog` |
+| `Lemon/Events/DebugSettings.swift` | TestFlight-gated overrides + banner text |
+| `Lemon/Events/DebugPanel.swift` | The debug UI and form picker |
 | `Lemon/PreviewGallery.swift` | Xcode previews of every form — dev only |
 | `Lemon/ToneSynth.swift` | On-device tone synthesis |
 | `Lemon/LemonApp.swift` | Entry point |
@@ -148,7 +150,19 @@ shape uses.
 
 ## Testing a form in the simulator
 
-Temporarily override in `ContentView.init`:
+**Use the debug panel** — bottom of the help page, "Jump to a form…". It lists
+every form including unfinished ones and switches to it immediately. No source
+edits, so nothing to revert and nothing to accidentally commit. It works in
+TestFlight too, which the alternatives below do not.
+
+The panel also carries a **simulated date** (for previewing seasonal content
+before its window) and a **show unfinished combos** toggle. Both persist across
+launches, and a banner stays on screen the whole time either is active. It is
+gated to debug builds and TestFlight via the `sandboxReceipt` check — App Store
+builds never render it.
+
+If you do need a source-level override for some reason, temporarily set these in
+`ContentView.init`:
 
 ```swift
 _currentForm = State(initialValue: .someForm)
@@ -156,9 +170,7 @@ _isAwake = State(initialValue: true)
 _showBabyLemon = State(initialValue: true)
 ```
 
-Or use the `DEMO_FORM` env var via `SIMCTL_CHILD_DEMO_FORM=...` at launch.
-
-**Always revert test scaffolding before committing** and confirm with
+**Always revert that scaffolding before committing** and confirm with
 `git diff`. Build and run:
 
 ```

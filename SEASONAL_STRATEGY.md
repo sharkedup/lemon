@@ -4,8 +4,8 @@ How time-gated content — month-long holiday packs (Halloween, Thanksgiving,
 winter, …) and short one-off events alike — gets built, shipped, and unlocked,
 and the refactoring that has to land before the first pack.
 
-Status: agreed in principle. **Phase 1 landed** (see §4); open questions at
-the bottom.
+Status: agreed in principle. **Phases 1 and 2 landed** (see §4); open
+questions at the bottom.
 
 **Keeping this current:** update this doc in the same change that decides one of
 its open questions, changes the `Availability` / `Event` / `Schedule` model, or
@@ -140,7 +140,7 @@ everything else.
 
 ## 4. Architecture work
 
-Three phases. Phase 1 was the blocker for all pack content; it has landed.
+Three phases. Phases 1 and 2 have landed; Phase 3 is the first pack itself.
 
 ### Phase 1 — unify the combo catalog ✅ DONE
 
@@ -184,7 +184,12 @@ Daisy's double-twirl):
 `ContentView` and `HelpView` both read `ComboCatalog.available`. The sequence
 exists in exactly one place. **Nothing outstanding — Phase 2 can start whenever.**
 
-### Phase 2 — schedules and clock
+### Phase 2 — schedules and clock ✅ DONE
+
+Shipped: `Schedule`, `Event`, `EventClock`, `EventCatalog`, the `.event`
+case on `Availability`, the reachability rules from §3, `scenePhase`
+recomputation, and the debug panel below. No combos are assigned to an event
+yet — that arrives with the first pack in Phase 3.
 
 ```swift
 struct MonthDay { let month: Int; let day: Int }

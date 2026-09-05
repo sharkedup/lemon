@@ -285,9 +285,15 @@ enum ComboCatalog {
     ///
     /// Triggerable and listed are the same set — an out-of-window combo the
     /// player already found appears dimmed rather than disappearing.
-    static func reachable(on date: Date = EventClock.now()) -> [ComboDefinition] {
-        all.filter {
-            $0.isReachable(on: date, isDiscovered: ComboDiscovery.isDiscovered($0.id))
+    /// `includingUnfinished` is the debug panel's override; tests pass it
+    /// explicitly so they don't depend on stored settings.
+    static func reachable(on date: Date = EventClock.now(),
+                          includingUnfinished: Bool = DebugSettings.showsUnfinishedCombos) -> [ComboDefinition] {
+        all.filter { combo in
+            if includingUnfinished, case .notReady = combo.availability {
+                return true
+            }
+            return combo.isReachable(on: date, isDiscovered: ComboDiscovery.isDiscovered(combo.id))
         }
     }
 }
