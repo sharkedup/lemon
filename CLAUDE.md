@@ -27,6 +27,15 @@ Live on the App Store; iterating via TestFlight. Repo `sharkedup/lemon` is
 
 Do this **in the same change** that causes it, not as a follow-up pass.
 
+A `.githooks/pre-commit` hook warns (never blocks) when a commit changes combo
+entries, an `isEnabled` flag, or adds a Swift file without touching either doc.
+It is deliberately narrow — it stays quiet for ordinary code changes. Enable it
+once per clone:
+
+```
+git config core.hooksPath .githooks
+```
+
 ---
 
 ## Layout

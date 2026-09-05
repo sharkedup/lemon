@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# Warns (never blocks) when a staged change looks like it makes CLAUDE.md or
+# SEASONAL_STRATEGY.md stale. Deliberately narrow — a hook that cries wolf on
+# every Swift edit is one you learn to ignore.
+#
+# Enable in a fresh clone with:  git config core.hooksPath .githooks
+
+staged=$(git diff --cached --name-only)
+
+# Nothing to say if the docs are already part of this commit.
+if printf '%s\n' "$staged" | grep -qE '^(CLAUDE\.md|SEASONAL_STRATEGY\.md)$'; then
+    exit 0
+fi
+
+signals=""
+
+# A combo or hint entry added or removed -> the form list and add-a-form
+# checklist in CLAUDE.md may be out of date.
+if git diff --cached -U0 -- Lemon/ContentView.swift \
+    | grep -qE '^[+-][^+-].*(Combo\(id:|ComboHint\(id:)'; then
+    signals="$signals
+  - a combo/hint entry changed -> check CLAUDE.md's shelved list"
+fi
+
+# Something shelved or unshelved.
+if git diff --cached -U0 -- Lemon/ContentView.swift \
+    | grep -qE '^[+-][^+-].*isEnabled:'; then
+    signals="$signals
+  - an isEnabled flag changed -> check CLAUDE.md's shelved list"
+fi
+
+# A new source file -> the layout table in CLAUDE.md is missing a row.
+if git diff --cached --name-only --diff-filter=A \
+    | grep -qE '^Lemon/.*\.swift$'; then
+    signals="$signals
+  - a new Swift file was added -> add it to CLAUDE.md's layout table"
+fi
+
+if [ -n "$signals" ]; then
+    printf '\n\033[33mDocs may be stale\033[0m — no CLAUDE.md / SEASONAL_STRATEGY.md change staged:%s\n' "$signals"
+    printf '\nCommitting anyway; amend if the docs need it.\n\n'
+fi
+
+exit 0
