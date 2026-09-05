@@ -100,6 +100,47 @@ struct DonutShape: Shape {
     }
 }
 
+/// A simple rounded heart — two lobes at the top meeting at a point at the
+/// bottom — used for Cool Lemon's sunglasses lenses.
+struct HeartShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { fraction(rect, x, y) }
+
+        path.move(to: p(0.5, 0.92))
+        path.addCurve(to: p(0.02, 0.38), control1: p(0.35, 0.75), control2: p(0.02, 0.58))
+        path.addCurve(to: p(0.24, 0.02), control1: p(0.02, 0.16), control2: p(0.14, 0.02))
+        path.addCurve(to: p(0.5, 0.24), control1: p(0.36, 0.02), control2: p(0.46, 0.1))
+        path.addCurve(to: p(0.76, 0.02), control1: p(0.54, 0.1), control2: p(0.64, 0.02))
+        path.addCurve(to: p(0.98, 0.38), control1: p(0.86, 0.02), control2: p(0.98, 0.16))
+        path.addCurve(to: p(0.5, 0.92), control1: p(0.98, 0.58), control2: p(0.65, 0.75))
+
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// The two curved seam lines wrapping a tennis ball, simplified to a pair
+/// of open arcs with 180°-rotational symmetry about the center — one
+/// running from the left edge up into the upper-right, the other from the
+/// right edge down into the lower-left — so together they read as one
+/// continuous "S" band rather than a symmetric eye/lens shape. Meant to be
+/// stroked, not filled.
+struct TennisSeamShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { fraction(rect, x, y) }
+
+        path.move(to: p(0.2, 0.0))
+        path.addQuadCurve(to: p(1.0, 0.5), control: p(0.38, 0.22))
+
+        path.move(to: p(0.8, 1.0))
+        path.addQuadCurve(to: p(0.0, 0.5), control: p(0.62, 0.78))
+
+        return path
+    }
+}
+
 enum DanceDirection: CaseIterable, Equatable {
     case up, down, left, right
 
@@ -275,15 +316,21 @@ enum Tune {
     static let apple: [Double] = [659.25, 783.99, 987.77, 880.00, 987.77, 1174.66]
     /// A tarter, brighter variant of Apple's riff — Green Apple.
     static let greenApple: [Double] = [698.46, 830.61, 1046.50, 932.33, 1046.50, 1244.51]
+    /// A laid-back, swaggering little slide — Cool Lemon.
+    static let coolLemon: [Double] = [392.00, 493.88, 440.00, 587.33, 523.25]
+    /// A springy, bouncing-ball riff — Tennis Ball.
+    static let tennisBall: [Double] = [523.25, 392.00, 523.25, 392.00, 659.25, 493.88]
+    /// A light, cheerful little skip — Daisy.
+    static let daisy: [Double] = [659.25, 739.99, 830.61, 739.99, 987.77, 880.00]
 }
 
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
-    case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple
+    case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple, coolLemon, tennisBall, daisy
 
     var bodyColors: (light: Color, dark: Color, stroke: Color) {
         switch self {
-        case .lemon, .singleSingleDoubleDouble, .runner, .princess:
+        case .lemon, .singleSingleDoubleDouble, .runner, .princess, .coolLemon:
             return (Color(red: 1.0, green: 0.93, blue: 0.35), Color(red: 0.98, green: 0.78, blue: 0.1), Color(red: 0.75, green: 0.58, blue: 0.05))
         case .clementine:
             return (Color(red: 1.0, green: 0.68, blue: 0.32), Color(red: 0.95, green: 0.48, blue: 0.12), Color(red: 0.75, green: 0.35, blue: 0.05))
@@ -312,6 +359,14 @@ enum Fruit: Equatable {
             return (Color(red: 0.95, green: 0.22, blue: 0.24), Color(red: 0.72, green: 0.06, blue: 0.12), Color(red: 0.42, green: 0.06, blue: 0.08))
         case .greenApple:
             return (Color(red: 0.75, green: 0.88, blue: 0.35), Color(red: 0.52, green: 0.72, blue: 0.16), Color(red: 0.3, green: 0.44, blue: 0.09))
+        case .tennisBall:
+            // "Optic yellow" — more yellow than green, unlike a plain lime.
+            // The pale seam is drawn separately in `tennisSeams`.
+            return (Color(red: 0.88, green: 0.9, blue: 0.3), Color(red: 0.75, green: 0.77, blue: 0.16), Color(red: 0.48, green: 0.5, blue: 0.1))
+        case .daisy:
+            // Rich golden center; the white petals are drawn separately in
+            // `daisyPetals`.
+            return (Color(red: 1.0, green: 0.82, blue: 0.15), Color(red: 0.92, green: 0.65, blue: 0.05), Color(red: 0.62, green: 0.42, blue: 0.04))
         }
     }
 
@@ -327,6 +382,9 @@ enum Fruit: Equatable {
     /// Gets a brown stem instead of the usual round nub, plus a glossy
     /// highlight on the body.
     var isApple: Bool { self == .apple || self == .greenApple }
+    var hasSunglasses: Bool { self == .coolLemon }
+    var isTennisBall: Bool { self == .tennisBall }
+    var isDaisy: Bool { self == .daisy }
 
     var name: String {
         switch self {
@@ -343,6 +401,9 @@ enum Fruit: Equatable {
         case .donut: return "Donut"
         case .apple: return "Apple"
         case .greenApple: return "Green Apple"
+        case .coolLemon: return "Cool Lemon"
+        case .tennisBall: return "Tennis Ball"
+        case .daisy: return "Daisy"
         }
     }
 
@@ -362,6 +423,9 @@ enum Fruit: Equatable {
         case .donut: return Tune.donut
         case .apple: return Tune.apple
         case .greenApple: return Tune.greenApple
+        case .coolLemon: return Tune.coolLemon
+        case .tennisBall: return Tune.tennisBall
+        case .daisy: return Tune.daisy
         }
     }
 
@@ -380,6 +444,9 @@ enum Fruit: Equatable {
         case .donut: return "🍩 DONUT TIME! 🍩"
         case .apple: return "🍎 SHINY RED APPLE! 🍎"
         case .greenApple: return "🍏 SHINY GREEN APPLE! 🍏"
+        case .coolLemon: return "😎 COOL LEMON! 😎"
+        case .tennisBall: return "🎾 TENNIS BALL! 🎾"
+        case .daisy: return "🌼 DAISY! 🌼"
         }
     }
 }
@@ -491,7 +558,11 @@ struct ContentView: View {
         Combo(id: "donut", sequence: [.direction(.right), .direction(.right), .direction(.down), .direction(.down), .direction(.left), .direction(.left), .twirl], kind: .transform(.donut)),
         // New — disabled until the graphics are verified.
         Combo(id: "apple", sequence: [.direction(.left), .direction(.left), .direction(.down), .direction(.down), .direction(.right), .direction(.right), .twirl], kind: .transform(.apple)),
-        Combo(id: "greenApple", sequence: [.direction(.down), .direction(.down), .direction(.left), .direction(.left), .direction(.up), .direction(.up), .twirl], kind: .transform(.greenApple))
+        Combo(id: "greenApple", sequence: [.direction(.down), .direction(.down), .direction(.left), .direction(.left), .direction(.up), .direction(.up), .twirl], kind: .transform(.greenApple)),
+        Combo(id: "coolLemon", sequence: [.direction(.up), .direction(.up), .direction(.right), .direction(.right), .direction(.down), .direction(.down), .twirl], kind: .transform(.coolLemon)),
+        Combo(id: "tennisBall", sequence: [.direction(.right), .direction(.right), .direction(.left), .direction(.left), .direction(.up), .direction(.up), .twirl], kind: .transform(.tennisBall)),
+        // Ends on two twirls instead of one.
+        Combo(id: "daisy", sequence: [.direction(.left), .direction(.right), .direction(.up), .direction(.down), .direction(.left), .direction(.right), .twirl, .twirl], kind: .transform(.daisy))
     ]
 
     /// What `recordInput` actually checks against — combos still being
@@ -620,12 +691,20 @@ struct ContentView: View {
             if form.isPitcher {
                 pitcherHandle(colors: colors)
             }
+            // Behind the body so only each petal's outer portion peeks out.
+            if form.isDaisy {
+                daisyPetals
+            }
 
             if form.isPitcher {
                 pitcherGlassBody(colors: colors, bodyShape: bodyShape)
             } else if form.isDonut {
                 donutBody(colors: colors)
             } else {
+                // Daisy's "body" is just the small center disc — the
+                // petals are what give the character its actual size.
+                let bodySize: CGSize = form.isDaisy ? CGSize(width: 100, height: 88) : CGSize(width: 260, height: 220)
+
                 bodyShape
                     .fill(
                         RadialGradient(
@@ -635,11 +714,11 @@ struct ContentView: View {
                             endRadius: 160
                         )
                     )
-                    .frame(width: 260, height: 220)
+                    .frame(width: bodySize.width, height: bodySize.height)
                     .overlay(
                         bodyShape
                             .stroke(colors.stroke, lineWidth: 3)
-                            .frame(width: 260, height: 220)
+                            .frame(width: bodySize.width, height: bodySize.height)
                     )
 
                 if form.isDog {
@@ -650,6 +729,8 @@ struct ContentView: View {
                     princessBodyFill(bodyShape: bodyShape)
                 } else if form.isApple {
                     appleShine
+                } else if form.isTennisBall {
+                    tennisSeams(bodyShape: bodyShape)
                 }
             }
 
@@ -661,6 +742,9 @@ struct ContentView: View {
             if form.isCat {
                 whiskers
             }
+            if form.hasSunglasses {
+                coolSunglasses
+            }
 
             if form.isDog {
                 dogEars(colors: colors)
@@ -671,6 +755,10 @@ struct ContentView: View {
             } else if form.isDonut {
                 // The frosting cap already reads as the "top" detail —
                 // no nub/leaf needed.
+            } else if form.isTennisBall {
+                // The seam pattern is the identifying detail — no nub/leaf.
+            } else if form.isDaisy {
+                // The petal ring already reads as the "top" detail.
             } else {
                 if form.isApple {
                     stem(colors: colors)
@@ -762,6 +850,15 @@ struct ContentView: View {
         }
     }
 
+    /// The white crossing seam lines, clipped to the body silhouette so
+    /// they never spill past the outline.
+    private func tennisSeams(bodyShape: AnyShape) -> some View {
+        TennisSeamShape()
+            .stroke(Color(red: 0.99, green: 0.93, blue: 0.9), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+            .frame(width: 260, height: 220)
+            .clipShape(bodyShape)
+    }
+
     private var flower: some View {
         ZStack {
             ForEach(0..<5, id: \.self) { i in
@@ -776,6 +873,27 @@ struct ContentView: View {
                 .frame(width: 10, height: 10)
         }
         .offset(x: 20, y: -118)
+    }
+
+    /// A full ring of white petals radiating out from the center, drawn
+    /// behind the body so only the outer portion of each petal peeks out
+    /// past the golden-yellow "center" — turning the whole character into
+    /// a daisy flower rather than just decorating one spot on it.
+    private var daisyPetals: some View {
+        ZStack {
+            ForEach(0..<12, id: \.self) { i in
+                Ellipse()
+                    .fill(Color.white)
+                    .overlay(Ellipse().stroke(Color(red: 0.15, green: 0.13, blue: 0.1), lineWidth: 4))
+                    .frame(width: 56, height: 110)
+                    .offset(y: -78)
+                    .rotationEffect(.degrees(Double(i) * 30))
+            }
+        }
+        // Rotated petals report a larger implicit size to the layout system
+        // than they actually need — pin this to the same footprint every
+        // other form uses so it doesn't push the name label down.
+        .frame(width: 260, height: 220)
     }
 
     /// Dark patch over one side of the head for Ruby's asymmetric coloring,
@@ -863,6 +981,35 @@ struct ContentView: View {
             }
         }
         .offset(y: 4)
+    }
+
+    /// Heart-shaped lenses over the eyes, with a small bridge and a couple
+    /// of glossy highlights — what makes Cool Lemon cool.
+    private var coolSunglasses: some View {
+        let frame = Color(red: 1.0, green: 0.45, blue: 0.65)
+
+        return ZStack {
+            heartLens.offset(x: -28, y: -19)
+            heartLens.offset(x: 28, y: -19)
+            Capsule()
+                .fill(frame)
+                .frame(width: 14, height: 5)
+                .offset(y: -21)
+        }
+    }
+
+    private var heartLens: some View {
+        HeartShape()
+            .fill(Color.black)
+            .overlay(HeartShape().stroke(Color(red: 1.0, green: 0.45, blue: 0.65), lineWidth: 3))
+            .frame(width: 42, height: 37)
+            .overlay(
+                Capsule()
+                    .fill(Color.white.opacity(0.6))
+                    .frame(width: 6, height: 12)
+                    .rotationEffect(.degrees(-20))
+                    .offset(x: -7, y: -5)
+            )
     }
 
     private var beardAndMoustache: some View {
@@ -1588,7 +1735,7 @@ struct ContentView: View {
     private func performAddBabyLemon() {
         isBusy = true
         let duration = 1.4
-        bannerText = "🍋👶 BABY LEMON! 🍋👶"
+        bannerText = "👶 BABY! 👶"
         showBabyLemon = true
 
         withAnimation(.easeInOut(duration: 0.3)) {
@@ -1689,11 +1836,14 @@ struct HelpView: View {
         ComboHint(id: "marble", emoji: "🐱", name: "Marble", steps: ["⬆️", "⬇️", "⬆️", "⬇️", "⬅️", "➡️", "⬅️", "➡️"], alwaysRevealed: false, isEnabled: false),
         ComboHint(id: "lemonShark", emoji: "🦈", name: "Lemon Shark", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬅️", "⬅️", "➡️", "➡️"], alwaysRevealed: false, isEnabled: false),
         ComboHint(id: "runner", emoji: "🏃", name: "Runner", steps: ["➡️", "➡️", "⬆️", "➡️", "➡️", "then Twirl!"], alwaysRevealed: false, isEnabled: false),
-        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby Lemon", steps: ["⬆️", "⬆️", "⬆️", "⬇️", "⬇️", "⬇️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "babyLemon", emoji: "👶", name: "Baby", steps: ["⬆️", "⬆️", "⬆️", "⬇️", "⬇️", "⬇️", "then Twirl!"], alwaysRevealed: false),
         ComboHint(id: "princessDress", emoji: "👑", name: "Princess Dress", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬇️", "⬆️", "then Twirl!"], alwaysRevealed: false),
         ComboHint(id: "donut", emoji: "🍩", name: "Donut", steps: ["➡️", "➡️", "⬇️", "⬇️", "⬅️", "⬅️", "then Twirl!"], alwaysRevealed: false),
         ComboHint(id: "apple", emoji: "🍎", name: "Apple", steps: ["⬅️", "⬅️", "⬇️", "⬇️", "➡️", "➡️", "then Twirl!"], alwaysRevealed: false),
-        ComboHint(id: "greenApple", emoji: "🍏", name: "Green Apple", steps: ["⬇️", "⬇️", "⬅️", "⬅️", "⬆️", "⬆️", "then Twirl!"], alwaysRevealed: false)
+        ComboHint(id: "greenApple", emoji: "🍏", name: "Green Apple", steps: ["⬇️", "⬇️", "⬅️", "⬅️", "⬆️", "⬆️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "coolLemon", emoji: "😎", name: "Cool Lemon", steps: ["⬆️", "⬆️", "➡️", "➡️", "⬇️", "⬇️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "tennisBall", emoji: "🎾", name: "Tennis Ball", steps: ["➡️", "➡️", "⬅️", "⬅️", "⬆️", "⬆️", "then Twirl!"], alwaysRevealed: false),
+        ComboHint(id: "daisy", emoji: "🌼", name: "Daisy", steps: ["⬅️", "➡️", "⬆️", "⬇️", "⬅️", "➡️", "then Twirl!", "Twirl again!"], alwaysRevealed: false)
     ]
 
     /// The revealed steps followed by a "❔" placeholder for each step the

@@ -17,7 +17,7 @@ targets:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
         CFBundleShortVersionString: "1.2"
-        CFBundleVersion: "14"
+        CFBundleVersion: "15"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kmsharkey.Lemon
