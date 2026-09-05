@@ -231,8 +231,8 @@ enough that a remote source could be swapped behind it later if that changes.
 ### The debug panel
 
 Date-gated content is untestable without a way to pretend it's October, and
-TestFlight builds are Release builds — so neither the `DEMO_FORM`-style
-environment variable nor `#if DEBUG` reaches them. This panel is what makes
+TestFlight builds are Release builds — so neither a launch environment
+variable nor `#if DEBUG` reaches them. This panel is what makes
 seasonal work testable at all, and it ships as part of Phase 2.
 
 **Gating.** A TestFlight install is detectable at runtime because its receipt is
@@ -302,8 +302,8 @@ else is reorganizing what exists.
 
 ### File organisation
 
-[`ContentView.swift`](Lemon/ContentView.swift) is still ~1980 lines after Phase 1
-moved the catalog out. Four packs would make it unmanageable, and — more
+[`ContentView.swift`](Lemon/ContentView.swift) is still ~2000 lines even after
+Phase 1 moved the catalog out. Four packs would make it unmanageable, and — more
 importantly — make Halloween and Thanksgiving work collide in the same lines.
 
 ```
@@ -369,17 +369,19 @@ zero submissions.
 
 Three layers, because they cover different things:
 
-- **Unit tests** for `Schedule.contains` — it takes the date as a parameter, so
-  no mechanism is needed. Cover the year-wrap (Dec 20 → Jan 6), single-day
-  windows, Feb 29 in a non-leap year, and the same instant in two timezones.
-  Plus a test that availability re-evaluates on `scenePhase` change. The test
-  target added in `LemonTests/` is the home for these.
-- **Simulator**, for looking at things: `SIMCTL_CHILD_EVENT_DATE=2026-10-15`
-  alongside the existing `DEMO_FORM` pattern, and `EventClock.now` set directly
-  in Xcode Previews. Also how App Store screenshots of Halloween get taken in
-  September.
-- **TestFlight**, via the debug panel (Phase 2) — the only option that reaches a
-  Release build, and the only way testers see seasonal or unfinished content.
+- **Unit tests** in `LemonTests/` — `Schedule.contains` takes both the date and
+  the calendar as parameters, so no mechanism is needed. Covered today: window
+  ends inclusive, the year-wrap (Dec 20 → Jan 6), single days, one-offs not
+  recurring, leap day, timezone, and the reachability rules from §3.
+- **Simulator**, for looking at things: the debug panel works in debug builds
+  too, and `EventClock.now` can be set directly in an Xcode Preview. Also how
+  App Store screenshots of seasonal content get taken out of season.
+- **TestFlight**, via the debug panel — the only option that reaches a Release
+  build, and so the only way testers see seasonal or unfinished content.
+
+**Not covered by tests:** the `scenePhase` recompute. Verifying it needs a UI
+test harness that isn't worth standing up for one line — it's checked by
+inspection instead.
 
 **Real-clock check once per pack.** Every override above bypasses `Date()`.
 Change the device date for real before shipping a pack.
