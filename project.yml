@@ -29,3 +29,19 @@ targets:
         DEVELOPMENT_TEAM: QS983XC69J
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
+    scheme:
+      testTargets:
+        - LemonTests
+  LemonTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - LemonTests
+    dependencies:
+      - target: Lemon
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.kmsharkey.LemonTests
+        DEVELOPMENT_TEAM: QS983XC69J
+        CODE_SIGN_STYLE: Automatic

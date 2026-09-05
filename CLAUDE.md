@@ -11,6 +11,29 @@ Live on the App Store; iterating via TestFlight. Repo `sharkedup/lemon` is
 
 ---
 
+## In progress: privacy policy migration
+
+The policy is moving out of this repo so this repo can go **private**. The new
+public home is `sharkedup/lemon-privacy`, already live and verified at
+<https://sharkedup.github.io/lemon-privacy/>.
+
+Remaining, in order:
+
+1. Update the **Privacy Policy URL** in App Store Connect → App Information.
+   Check the **Support URL** too — if it points at this repo or the old Pages
+   site, it breaks the same way.
+2. Submit the next version and wait for **approval** (not just submission — a
+   rejection would mean resubmitting against the old URL).
+3. Flip this repo private.
+4. Delete `docs/`, drop its row from the layout table, fix the "public" note in
+   the header above, and delete this section.
+
+**Do not delete `docs/` before step 2 completes** — `sharkedup.github.io/lemon/`
+is still the URL in the live listing, and removing it early breaks a live app's
+required policy link.
+
+---
+
 ## Keeping these docs current
 
 **Update `CLAUDE.md` when:**
@@ -46,6 +69,7 @@ git config core.hooksPath .githooks
 | `Lemon/PreviewGallery.swift` | Xcode previews of every form — dev only |
 | `Lemon/ToneSynth.swift` | On-device tone synthesis |
 | `Lemon/LemonApp.swift` | Entry point |
+| `LemonTests/` | Unit tests — catalog invariants and combo matching |
 | `project.yml` | XcodeGen spec — `.xcodeproj` is generated |
 | `docs/index.html` | App Store privacy policy, served via GitHub Pages |
 | `SEASONAL_STRATEGY.md` | Planned time-gated holiday content (not yet built) |
@@ -122,8 +146,42 @@ xcodebuild -project Lemon.xcodeproj -scheme Lemon \
 
 ---
 
+## Automated tests
+
+```
+xcodebuild test -project Lemon.xcodeproj -scheme Lemon \
+  -destination 'platform=iOS Simulator,name=iPhone 17'
+```
+
+Local only — no CI. Tests run in milliseconds; the ~30s is build time.
+
+**What they cover** — bugs that ship silently, where the app builds and looks
+fine but is broken for players:
+
+- No enabled combo's sequence is a suffix of another's. Matching compares the
+  *tail* of recent input and takes the first candidate that fits, so a
+  collision makes one combo unreachable — and which one loses depends on
+  declaration order, so a reorder can flip it. The test flags the hazard, not
+  just whether it currently misfires.
+- Every `Combo` has a matching `ComboHint` and vice versa.
+- Each hint's emoji steps match its combo's real sequence — otherwise the help
+  page teaches a sequence that does nothing.
+- `isEnabled` agrees between a combo and its hint.
+- Combo ids are unique; disabled combos can't be triggered; a partial sequence
+  matches nothing.
+
+**What they do not cover: anything visual.** If a form renders wrong, no test
+will say so — that stays a simulator check by eye.
+
+The catalog/hint-sync tests exist to prove Phase 1 of `SEASONAL_STRATEGY.md`
+doesn't change behaviour. Once hints are derived from sequences, those bugs
+become unrepresentable and the tests can be deleted.
+
+---
+
 ## Release pipeline
 
+0. **Run the tests** (above). Red means don't ship.
 1. Bump `CFBundleVersion` in **both** `project.yml` **and** `Lemon/Info.plist` —
    they must match
 2. `xcodegen generate`

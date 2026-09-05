@@ -602,7 +602,7 @@ struct ContentView: View {
 
     private let synth = ToneSynth()
 
-    private let combos: [Combo] = [
+    static let combos: [Combo] = [
         Combo(id: "lemonPower", sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.right), .direction(.right), .twirl], kind: .lemonPower),
         Combo(id: "clementine", sequence: [.direction(.up), .direction(.up), .direction(.down), .direction(.down), .direction(.left), .direction(.left), .twirl], kind: .transform(.clementine)),
         Combo(id: "flex", sequence: [.direction(.down), .direction(.down), .direction(.up), .direction(.up), .direction(.left), .direction(.left), .twirl], kind: .flex),
@@ -635,7 +635,7 @@ struct ContentView: View {
 
     /// What `recordInput` actually checks against — combos still being
     /// reworked are excluded so they can't be triggered or discovered.
-    private var activeCombos: [Combo] { combos.filter(\.isEnabled) }
+    static var activeCombos: [Combo] { combos.filter(\.isEnabled) }
 
     /// Reference canvas the whole scene is designed at (an iPhone-sized screen).
     /// On a bigger screen — chiefly iPad — this gets uniformly scaled up via
@@ -1730,17 +1730,28 @@ struct ContentView: View {
     /// Appends to the rolling input buffer and reports the combo it completes, if any.
     private func recordInput(_ action: InputAction) -> ComboKind? {
         inputHistory.append(action)
-        let candidates = activeCombos
+        let candidates = Self.activeCombos
         let maxLength = candidates.map { $0.sequence.count }.max() ?? 0
         if inputHistory.count > maxLength {
             inputHistory.removeFirst(inputHistory.count - maxLength)
         }
+        guard let combo = Self.matchingCombo(history: inputHistory, in: candidates) else {
+            return nil
+        }
+        inputHistory.removeAll()
+        ComboDiscovery.markDiscovered(combo.id)
+        return combo.kind
+    }
+
+    /// The pure matching step behind `recordInput`, split out so tests can
+    /// exercise it without a live view and its `@State`. Returns the first
+    /// candidate whose sequence matches the tail of `history` — so a combo
+    /// whose sequence is a suffix of another's will shadow it entirely.
+    static func matchingCombo(history: [InputAction], in candidates: [Combo]) -> Combo? {
         for combo in candidates {
-            guard inputHistory.count >= combo.sequence.count else { continue }
-            if Array(inputHistory.suffix(combo.sequence.count)) == combo.sequence {
-                inputHistory.removeAll()
-                ComboDiscovery.markDiscovered(combo.id)
-                return combo.kind
+            guard history.count >= combo.sequence.count else { continue }
+            if Array(history.suffix(combo.sequence.count)) == combo.sequence {
+                return combo
             }
         }
         return nil
@@ -1908,7 +1919,7 @@ struct ContentView: View {
     }
 }
 
-private struct ComboHint: Identifiable {
+struct ComboHint: Identifiable {
     let id: String
     let emoji: String
     let name: String
@@ -1931,7 +1942,7 @@ struct HelpView: View {
     @State private var discoveryRefresh = false
     @State private var showResetConfirmation = false
 
-    private let hints: [ComboHint] = [
+    static let hints: [ComboHint] = [
         ComboHint(id: "lemonPower", emoji: "🍋", name: "Lemon Power", steps: ["⬆️", "⬆️", "⬇️", "⬇️", "➡️", "➡️", "then Twirl!"], alwaysRevealed: true),
         ComboHint(id: "clementine", emoji: "🍊", name: "Clementine", steps: ["⬆️", "⬆️", "⬇️", "⬇️", "⬅️", "⬅️", "then Twirl!"], alwaysRevealed: false),
         ComboHint(id: "flex", emoji: "💪", name: "Strong Lemon", steps: ["⬇️", "⬇️", "⬆️", "⬆️", "⬅️", "⬅️", "then Twirl!"], alwaysRevealed: false),
@@ -1980,7 +1991,7 @@ struct HelpView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
-                        ForEach(hints.filter(\.isEnabled)) { hint in
+                        ForEach(Self.hints.filter(\.isEnabled)) { hint in
                             let discovered = hint.alwaysRevealed || ComboDiscovery.isDiscovered(hint.id)
                             let hintCount = ComboDiscovery.hintCount(hint.id)
                             let revealed = discovered || hintCount >= hint.steps.count
@@ -2039,7 +2050,7 @@ struct HelpView: View {
                 titleVisibility: .visible
             ) {
                 Button("Reset", role: .destructive) {
-                    for hint in hints where !hint.alwaysRevealed {
+                    for hint in Self.hints where !hint.alwaysRevealed {
                         ComboDiscovery.reset(hint.id)
                     }
                     discoveryRefresh.toggle()
