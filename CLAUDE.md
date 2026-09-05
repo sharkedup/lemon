@@ -17,20 +17,25 @@ The policy is moving out of this repo so this repo can go **private**. The new
 public home is `sharkedup/lemon-privacy`, already live and verified at
 <https://sharkedup.github.io/lemon-privacy/>.
 
+**State as of 2026-09-05:** a build is in review with updated listing copy and
+preview video. The Privacy Policy URL has **not** been changed yet — the listing
+still points at `sharkedup.github.io/lemon/`, which keeps working while this
+repo stays public.
+
 Remaining, in order:
 
-1. Update the **Privacy Policy URL** in App Store Connect → App Information.
+1. Wait for the in-review build to be **approved**.
+2. Update the **Privacy Policy URL** in App Store Connect → App Information.
    Check the **Support URL** too — if it points at this repo or the old Pages
    site, it breaks the same way.
-2. Submit the next version and wait for **approval** (not just submission — a
-   rejection would mean resubmitting against the old URL).
-3. Flip this repo private.
-4. Delete `docs/`, drop its row from the layout table, fix the "public" note in
+3. Load both URLs in a browser and confirm they resolve.
+4. Flip this repo private.
+5. Delete `docs/`, drop its row from the layout table, fix the "public" note in
    the header above, and delete this section.
 
-**Do not delete `docs/` before step 2 completes** — `sharkedup.github.io/lemon/`
-is still the URL in the live listing, and removing it early breaks a live app's
-required policy link.
+**Do not flip private or delete `docs/` before step 3 passes** — until then
+`sharkedup.github.io/lemon/` is the policy URL on a live app, and removing it
+breaks a link Apple requires.
 
 ---
 
