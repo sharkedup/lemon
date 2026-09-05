@@ -6,6 +6,12 @@ and the refactoring that has to land before the first pack.
 
 Status: agreed in principle, open questions at the bottom.
 
+**Keeping this current:** update this doc in the same change that decides one of
+its open questions, changes the `Availability` / `Event` / `Schedule` model, or
+lands a phase. When a phase lands, migrate the now-true facts into `CLAUDE.md`
+and mark the phase done here — this file holds rationale and plans, `CLAUDE.md`
+holds what is true today.
+
 ---
 
 ## 1. Core strategy: ship dormant, unlock by date
