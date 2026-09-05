@@ -77,7 +77,7 @@ final class ComboCatalogTests: XCTestCase {
     /// another's, whichever is declared first always wins and the other can
     /// never fire.
     func testNoAvailableComboIsShadowedBySuffixCollision() {
-        let available = ComboCatalog.available
+        let available = ComboCatalog.reachable()
 
         for (i, combo) in available.enumerated() {
             for (j, other) in available.enumerated() where i != j {
@@ -92,25 +92,26 @@ final class ComboCatalogTests: XCTestCase {
     // MARK: - Matching behaviour
 
     func testMatchingReturnsTheExpectedCombo() {
-        for combo in ComboCatalog.available {
-            let match = ContentView.matchingCombo(history: combo.sequence, in: ComboCatalog.available)
+        for combo in ComboCatalog.reachable() {
+            let match = ContentView.matchingCombo(history: combo.sequence, in: ComboCatalog.reachable())
             XCTAssertEqual(match?.id, combo.id,
                            "Entering '\(combo.id)'s own sequence did not trigger it.")
         }
     }
 
     func testPartialSequenceMatchesNothing() {
-        guard let daisy = ComboCatalog.available.first(where: { $0.id == "daisy" }) else {
+        guard let daisy = ComboCatalog.reachable().first(where: { $0.id == "daisy" }) else {
             return XCTFail("daisy combo missing")
         }
         let partial = Array(daisy.sequence.dropLast())
-        XCTAssertNil(ContentView.matchingCombo(history: partial, in: ComboCatalog.available),
+        XCTAssertNil(ContentView.matchingCombo(history: partial, in: ComboCatalog.reachable()),
                      "An incomplete sequence fired a combo.")
     }
 
     func testNotReadyCombosAreNotReachable() {
-        for combo in combos where !combo.availability.isCurrentlyAvailable {
-            let match = ContentView.matchingCombo(history: combo.sequence, in: ComboCatalog.available)
+        for combo in combos {
+            guard case .notReady = combo.availability else { continue }
+            let match = ContentView.matchingCombo(history: combo.sequence, in: ComboCatalog.reachable())
             XCTAssertNotEqual(match?.id, combo.id,
                               "Shelved combo '\(combo.id)' can still be triggered.")
         }

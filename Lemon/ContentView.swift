@@ -1684,7 +1684,7 @@ struct ContentView: View {
     /// Appends to the rolling input buffer and reports the combo it completes, if any.
     private func recordInput(_ action: InputAction) -> ComboKind? {
         inputHistory.append(action)
-        let candidates = ComboCatalog.available
+        let candidates = ComboCatalog.reachable()
         let maxLength = candidates.map { $0.sequence.count }.max() ?? 0
         if inputHistory.count > maxLength {
             inputHistory.removeFirst(inputHistory.count - maxLength)
@@ -1875,6 +1875,7 @@ struct ContentView: View {
 
 struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var discoveryRefresh = false
     @State private var showResetConfirmation = false
 
@@ -1903,7 +1904,7 @@ struct HelpView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
-                        ForEach(ComboCatalog.available) { hint in
+                        ForEach(ComboCatalog.reachable()) { hint in
                             let discovered = hint.alwaysRevealed || ComboDiscovery.isDiscovered(hint.id)
                             let hintCount = ComboDiscovery.hintCount(hint.id)
                             let revealed = discovered || hintCount >= hint.pressCount
@@ -1955,6 +1956,11 @@ struct HelpView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            // SwiftUI will not re-render just because the clock crossed into
+            // an event's window, so recompute when the app comes forward.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { discoveryRefresh.toggle() }
             }
             .confirmationDialog(
                 "Forget every combo you've found?",

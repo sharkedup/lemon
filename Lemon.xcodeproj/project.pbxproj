@@ -13,6 +13,8 @@
 		75D6116E30FCB10850B197D6 /* ToneSynth.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6892B17895DA20474D9570 /* ToneSynth.swift */; };
 		9C0DC233DB689BB42F8382D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E5D8324B4871D3BC84FC990B /* Assets.xcassets */; };
 		A1DC76D90D9C70E28E32E885 /* ComboCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19026C2C2FC42E02FE1D8F3C /* ComboCatalogTests.swift */; };
+		B1920857E30648F376069EE1 /* Event.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF5593B12CF1926B402BF69A /* Event.swift */; };
+		B77EF24A4E5CFE65E72E8DC4 /* ScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E6C3F9CE2B096233E7B23B /* ScheduleTests.swift */; };
 		E175D2070CA7B1F2839F9909 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5629DD627BE3F8FBA3E2F9C8 /* ContentView.swift */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +29,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		08E6C3F9CE2B096233E7B23B /* ScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleTests.swift; sourceTree = "<group>"; };
 		19026C2C2FC42E02FE1D8F3C /* ComboCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboCatalogTests.swift; sourceTree = "<group>"; };
 		2B1FD5B87EDE5DF9A0D2665A /* LemonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LemonApp.swift; sourceTree = "<group>"; };
 		2FFF76C0F775C192BCBEFDE6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -35,6 +38,7 @@
 		7DF02A168A78A7910E31E7A7 /* PreviewGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewGallery.swift; sourceTree = "<group>"; };
 		C0D44EBF4DAD4FAB466177B2 /* ComboCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboCatalog.swift; sourceTree = "<group>"; };
 		D45DD3ADD734887C36FDB409 /* LemonTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LemonTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DF5593B12CF1926B402BF69A /* Event.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Event.swift; sourceTree = "<group>"; };
 		E5D8324B4871D3BC84FC990B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EF6892B17895DA20474D9570 /* ToneSynth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToneSynth.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -57,6 +61,14 @@
 			path = Combos;
 			sourceTree = "<group>";
 		};
+		AD7ED2458FF7447E4A384C6F /* Events */ = {
+			isa = PBXGroup;
+			children = (
+				DF5593B12CF1926B402BF69A /* Event.swift */,
+			);
+			path = Events;
+			sourceTree = "<group>";
+		};
 		C230E45B00110037A3DDAAF8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -70,6 +82,7 @@
 			isa = PBXGroup;
 			children = (
 				19026C2C2FC42E02FE1D8F3C /* ComboCatalogTests.swift */,
+				08E6C3F9CE2B096233E7B23B /* ScheduleTests.swift */,
 			);
 			path = LemonTests;
 			sourceTree = "<group>";
@@ -84,6 +97,7 @@
 				7DF02A168A78A7910E31E7A7 /* PreviewGallery.swift */,
 				EF6892B17895DA20474D9570 /* ToneSynth.swift */,
 				9BC93009E3872EB2056AB2E9 /* Combos */,
+				AD7ED2458FF7447E4A384C6F /* Events */,
 			);
 			path = Lemon;
 			sourceTree = "<group>";
@@ -183,6 +197,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1DC76D90D9C70E28E32E885 /* ComboCatalogTests.swift in Sources */,
+				B77EF24A4E5CFE65E72E8DC4 /* ScheduleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -192,6 +207,7 @@
 			files = (
 				6419CC1B345017DCF79EF95E /* ComboCatalog.swift in Sources */,
 				E175D2070CA7B1F2839F9909 /* ContentView.swift in Sources */,
+				B1920857E30648F376069EE1 /* Event.swift in Sources */,
 				6197929BBFBB7883861D8DDA /* LemonApp.swift in Sources */,
 				60D399923B99D48D485F7DE0 /* PreviewGallery.swift in Sources */,
 				75D6116E30FCB10850B197D6 /* ToneSynth.swift in Sources */,

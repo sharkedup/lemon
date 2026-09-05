@@ -72,6 +72,7 @@ git config core.hooksPath .githooks
 |---|---|
 | `Lemon/ContentView.swift` | ~2000 lines: scene, all forms, help page |
 | `Lemon/Combos/ComboCatalog.swift` | Every combo — the single source of truth |
+| `Lemon/Events/Event.swift` | `Schedule`, `Event`, `EventClock`, `EventCatalog` |
 | `Lemon/PreviewGallery.swift` | Xcode previews of every form — dev only |
 | `Lemon/ToneSynth.swift` | On-device tone synthesis |
 | `Lemon/LemonApp.swift` | Entry point |
@@ -93,8 +94,16 @@ for edits inside existing files.
   page's arrow strings are **derived** from `sequence` via `hintSteps`, so a
   hint cannot drift from what the game accepts. `ComboCatalog.available` is
   what both matching and the help page read.
-- **`Availability`** — `.always` or `.notReady`. Replaced the old `isEnabled`
-  flag; gains an `.event` case in Phase 2 of `SEASONAL_STRATEGY.md`.
+- **`Availability`** — `.always`, `.event(Event)`, or `.notReady`. Replaced the
+  old `isEnabled` flag.
+- **`Schedule`** — when an event is on. `.annual(from:through:)` wraps the year
+  boundary (Dec 20 → Jan 6); `.oneOff(year:_:)` never repeats. Takes the
+  calendar as a parameter so it stays pure and follows the player's local time.
+- **`EventClock.now`** — injectable clock. Tests and previews replace it; call
+  `EventClock.reset()` afterwards.
+- **Reachability**: a discovered event combo stays playable after its window
+  closes — the discovery is seasonal, the reward is permanent. See
+  `ComboDefinition.isReachable(on:isDiscovered:)`.
 - Catalog order matters: matching takes the first candidate fitting the tail of
   recent input, so an earlier entry shadows a later one whose sequence is a
   suffix of it. Guarded by a test.
@@ -181,6 +190,11 @@ fine but is broken for players:
 - A hint has exactly as many steps as its combo has presses.
 - Combo ids are unique, every entry has a name and emoji, `.notReady` combos
   can't be triggered, and a partial sequence matches nothing.
+- Schedule boundaries: inclusive ends, the year-wrapping window, single days,
+  one-offs not recurring, leap day, and that windows follow the supplied
+  calendar rather than UTC.
+- The reachability rules from §3 of `SEASONAL_STRATEGY.md`, including that a
+  `.notReady` combo stays unreachable even with a discovery flag set.
 
 **What they do not cover: anything visual.** If a form renders wrong, no test
 will say so — that stays a simulator check by eye.

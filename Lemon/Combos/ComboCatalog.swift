@@ -1,23 +1,15 @@
 import Foundation
 
-/// Whether a combo can be reached at all.
-///
-/// Replaces the old `isEnabled` flag. Phase 2 of `SEASONAL_STRATEGY.md` adds an
-/// `.event(Event)` case for date-gated holiday content; until then a combo is
-/// either always on, or not finished.
+/// Whether a combo can be reached at all. Replaces the old `isEnabled` flag.
 enum Availability {
     /// Evergreen — reachable whenever the app is open.
     case always
+    /// Date-gated. Discoverable only inside the event's schedule, though once
+    /// found it stays playable — see `ComboDefinition.isReachable`.
+    case event(Event)
     /// Not finished. Never triggerable and never listed, but its art, tune and
     /// `PreviewGallery` entry stay in place. Shelving beats deleting.
     case notReady
-
-    var isCurrentlyAvailable: Bool {
-        switch self {
-        case .always: return true
-        case .notReady: return false
-        }
-    }
 }
 
 /// One secret dance combo: the taps that trigger it, what it does, and how it
@@ -60,6 +52,35 @@ struct ComboDefinition: Identifiable {
 
     var pressCount: Int { hintSteps.count }
     var fullSequence: String { hintSteps.joined(separator: " ") }
+
+    /// Whether the player can trigger this right now.
+    ///
+    /// A discovered event combo stays reachable after its window closes —
+    /// the *discovery* is seasonal, the reward is permanent. Nothing the
+    /// player has already found is ever taken away.
+    func isReachable(on date: Date, isDiscovered: Bool, calendar: Calendar = .current) -> Bool {
+        switch availability {
+        case .always:
+            return true
+        case .notReady:
+            return false
+        case .event(let event):
+            return event.isActive(on: date, calendar: calendar) || isDiscovered
+        }
+    }
+
+    /// Reachable only because it was discovered earlier — the help page dims
+    /// these and shows the event's `returnsCopy` instead of the sequence.
+    func isOutOfWindow(on date: Date, calendar: Calendar = .current) -> Bool {
+        guard case .event(let event) = availability else { return false }
+        return !event.isActive(on: date, calendar: calendar)
+    }
+
+    /// The copy shown while out of window, if any.
+    var returnsCopy: String? {
+        guard case .event(let event) = availability else { return nil }
+        return event.returnsCopy
+    }
 }
 
 extension DanceDirection {
@@ -261,7 +282,12 @@ enum ComboCatalog {
     ]
 
     /// What `recordInput` matches against, and what the help page lists.
-    static var available: [ComboDefinition] {
-        all.filter(\.availability.isCurrentlyAvailable)
+    ///
+    /// Triggerable and listed are the same set — an out-of-window combo the
+    /// player already found appears dimmed rather than disappearing.
+    static func reachable(on date: Date = EventClock.now()) -> [ComboDefinition] {
+        all.filter {
+            $0.isReachable(on: date, isDiscovered: ComboDiscovery.isDiscovered($0.id))
+        }
     }
 }
