@@ -223,6 +223,62 @@ The main thing remote config would buy is fixing a *wrong window* after ship.
 A boundary test is a far cheaper mitigation. Keep the `Schedule` type clean
 enough that a remote source could be swapped behind it later if that changes.
 
+### The debug panel
+
+Date-gated content is untestable without a way to pretend it's October, and
+TestFlight builds are Release builds — so neither the `DEMO_FORM`-style
+environment variable nor `#if DEBUG` reaches them. This panel is what makes
+seasonal work testable at all, and it ships as part of Phase 2.
+
+**Gating.** A TestFlight install is detectable at runtime because its receipt is
+named `sandboxReceipt` rather than `receipt`:
+
+```swift
+Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+```
+
+Same binary; the panel is simply not rendered for App Store users. It's a
+heuristic rather than a guarantee, but the worst case if it ever misfired is
+somebody seeing Halloween early.
+
+**Where it lives.** A plain "Debug" section at the bottom of the help page,
+below the Reset button — *not* behind a secret gesture. The gate already does
+the hiding, so obscurity buys nothing and costs you remembering which gesture it
+was three months later.
+
+**What it does.**
+
+1. **Set a simulated date.** Overrides `EventClock.now`, persisted in
+   UserDefaults, clearable in one tap.
+2. **Show unfinished combos** — folds `.notReady` into the matchable set.
+   **Default off**, so TestFlight matches production until deliberately changed;
+   otherwise testers report problems with forms that were already shelved and
+   their attention goes to the wrong place.
+3. **Jump to any form**, including `.notReady` ones — transforms the character
+   immediately, no sequence required. This is the one that matters most for
+   display work, and it replaces the edit-`init`/rebuild/screenshot/revert loop
+   in `CLAUDE.md`, along with its standing risk of committing test scaffolding.
+
+**One banner for all of it.** While any override is active, show a single line —
+`Debug · simulated date Oct 15 · unfinished combos shown`. Without it, someone
+flips a switch, forgets, and files a confusing bug weeks later.
+
+**What it still doesn't cover.** An override bypasses real `Date()`, so it
+proves our logic works, not that the system clock path does. Change the device
+or simulator date for real once before shipping each pack — once per pack, not
+per build.
+
+### Availability re-evaluation
+
+**When does the app notice the date changed?** SwiftUI won't re-render just
+because the clock ticked past midnight, so somebody with the app open at 11:59pm
+on Sept 30 would sit there with no Halloween.
+
+Recompute when `scenePhase` becomes `.active`. Most people background the app,
+so that covers nearly all real usage for very little code — but it has to be
+deliberate, and it needs its own test. Otherwise the bug surfaces on the one
+night of the year it matters.
+
 ### Phase 3 — seasonal skin layer
 
 Every form gets the seasonal decoration composed over it, with a per-form
@@ -241,17 +297,19 @@ else is reorganizing what exists.
 
 ### File organisation
 
-[`ContentView.swift`](Lemon/ContentView.swift) is already 2055 lines. Four packs
-would make it unmanageable, and — more importantly — make Halloween and
-Thanksgiving work collide in the same lines.
+[`ContentView.swift`](Lemon/ContentView.swift) is still ~1980 lines after Phase 1
+moved the catalog out. Four packs would make it unmanageable, and — more
+importantly — make Halloween and Thanksgiving work collide in the same lines.
 
 ```
 Lemon/
   ContentView.swift           scene, animation, input handling
   Combos/ComboCatalog.swift   the single combo registry
-  Events/Event.swift          Schedule, Event, Availability, clock
+  Events/Event.swift          Schedule, Event, clock (Availability lives
+                              in ComboCatalog.swift as of Phase 1)
   Events/EventCatalog.swift   the schedule config — pure data
   Events/Skins.swift          seasonal overlay layer
+  Events/DebugPanel.swift     TestFlight-gated date / form overrides
   Forms/HalloweenForms.swift  shapes + colors, one file per pack
   Forms/WinterForms.swift
 ```
@@ -304,15 +362,25 @@ zero submissions.
 
 ## 7. Testing
 
-- **Date override via env var**, matching the existing `DEMO_FORM` pattern:
-  `SIMCTL_CHILD_EVENT_DATE=2026-10-15`. Needed for App Store screenshots of
-  Halloween content in September, and for boundary checks.
-- **Boundary tests** for `Schedule.contains` — especially the year-wrapping
-  case, and separately the single-day case where timezone handling is
-  load-bearing. There is no test target in [`project.yml`](project.yml) today;
-  this is worth adding a small one for.
-- **`PreviewGallery` shows every form regardless of availability**, unchanged
-  from today's convention.
+Three layers, because they cover different things:
+
+- **Unit tests** for `Schedule.contains` — it takes the date as a parameter, so
+  no mechanism is needed. Cover the year-wrap (Dec 20 → Jan 6), single-day
+  windows, Feb 29 in a non-leap year, and the same instant in two timezones.
+  Plus a test that availability re-evaluates on `scenePhase` change. The test
+  target added in `LemonTests/` is the home for these.
+- **Simulator**, for looking at things: `SIMCTL_CHILD_EVENT_DATE=2026-10-15`
+  alongside the existing `DEMO_FORM` pattern, and `EventClock.now` set directly
+  in Xcode Previews. Also how App Store screenshots of Halloween get taken in
+  September.
+- **TestFlight**, via the debug panel (Phase 2) — the only option that reaches a
+  Release build, and the only way testers see seasonal or unfinished content.
+
+**Real-clock check once per pack.** Every override above bypasses `Date()`.
+Change the device date for real before shipping a pack.
+
+**`PreviewGallery` shows every form regardless of availability**, unchanged from
+today's convention.
 
 ---
 
