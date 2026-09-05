@@ -65,7 +65,8 @@ git config core.hooksPath .githooks
 
 | File | What |
 |---|---|
-| `Lemon/ContentView.swift` | ~2000 lines: scene, all forms, combos, help page |
+| `Lemon/ContentView.swift` | ~2000 lines: scene, all forms, help page |
+| `Lemon/Combos/ComboCatalog.swift` | Every combo — the single source of truth |
 | `Lemon/PreviewGallery.swift` | Xcode previews of every form — dev only |
 | `Lemon/ToneSynth.swift` | On-device tone synthesis |
 | `Lemon/LemonApp.swift` | Entry point |
@@ -83,10 +84,15 @@ for edits inside existing files.
 - **`characterBody(form:)`** — builds body, face, decorations, arms, legs for any
   form. Used by both the main character *and* `babyLemonCompanion`, so a new
   form works on the baby companion for free.
-- **`Combo`** / `combos` / `activeCombos` — sequences and what they trigger.
-- **`ComboHint`** / `hints` — **duplicates** the combo sequences as emoji strings
-  inside `HelpView`. Kept in sync by hand; a typo here silently lies to the
-  player. Scheduled for removal in Phase 1 of `SEASONAL_STRATEGY.md`.
+- **`ComboDefinition`** / `ComboCatalog` — every combo, defined once. The help
+  page's arrow strings are **derived** from `sequence` via `hintSteps`, so a
+  hint cannot drift from what the game accepts. `ComboCatalog.available` is
+  what both matching and the help page read.
+- **`Availability`** — `.always` or `.notReady`. Replaced the old `isEnabled`
+  flag; gains an `.event` case in Phase 2 of `SEASONAL_STRATEGY.md`.
+- Catalog order matters: matching takes the first candidate fitting the tail of
+  recent input, so an earlier entry shadows a later one whose sequence is a
+  suffix of it. Guarded by a test.
 - **`ComboDiscovery`** — UserDefaults-backed discovery and hint-reveal counts.
 - **`Tune`** — per-form frequency arrays.
 
@@ -107,17 +113,19 @@ shape uses.
 7. Custom `Shape` struct(s) if needed
 8. `characterBody` branch — and add to the nub/leaf exclusion chain if it
    shouldn't get the default lemon stem
-9. `Combo` entry — verify the sequence is unique against every existing combo
-10. `ComboHint` entry — sequence retyped as emoji; **must match step 9 exactly**
-11. `PreviewGallery.swift` — both the `allForms` grid array and its own
+9. `ComboDefinition` entry in `ComboCatalog` — id, emoji, name, sequence, kind,
+   availability. The hint text derives itself; there is nothing to keep in sync.
+10. `PreviewGallery.swift` — both the `allForms` grid array and its own
     `#Preview("<Name> — Detail")` block
+11. Run the tests (below) — they catch a sequence that collides with an
+    existing combo
 12. Build, verify in the simulator, revert any test scaffolding
 
 **Conventions**
 - Every new form gets a `PreviewGallery` entry in the same change.
-- New combos ship `isEnabled: true` — not staged disabled.
-- Shelving beats deleting: set `isEnabled: false` on both the `Combo` and its
-  `ComboHint`, leave the art and tune in place.
+- New combos ship `availability: .always` — not staged off.
+- Shelving beats deleting: set `availability: .notReady` and leave the art,
+  tune and `PreviewGallery` entry in place.
 
 **Currently shelved**: `singleSingleDoubleDouble`, `ruby`, `marble`,
 `lemonShark`, `runner`, `soccerBall`
@@ -163,19 +171,17 @@ fine but is broken for players:
   collision makes one combo unreachable — and which one loses depends on
   declaration order, so a reorder can flip it. The test flags the hazard, not
   just whether it currently misfires.
-- Every `Combo` has a matching `ComboHint` and vice versa.
-- Each hint's emoji steps match its combo's real sequence — otherwise the help
-  page teaches a sequence that does nothing.
-- `isEnabled` agrees between a combo and its hint.
-- Combo ids are unique; disabled combos can't be triggered; a partial sequence
-  matches nothing.
+- Derived hint text still reproduces, byte for byte, the hand-written strings
+  that shipped before the catalogs were unified.
+- A hint has exactly as many steps as its combo has presses.
+- Combo ids are unique, every entry has a name and emoji, `.notReady` combos
+  can't be triggered, and a partial sequence matches nothing.
 
 **What they do not cover: anything visual.** If a form renders wrong, no test
 will say so — that stays a simulator check by eye.
 
-The catalog/hint-sync tests exist to prove Phase 1 of `SEASONAL_STRATEGY.md`
-doesn't change behaviour. Once hints are derived from sequences, those bugs
-become unrepresentable and the tests can be deleted.
+The snapshot of pre-unification hint strings is what proved Phase 1 didn't
+change behaviour. Worth keeping — it still guards the derivation rule.
 
 ---
 

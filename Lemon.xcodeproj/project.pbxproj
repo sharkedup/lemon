@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		60D399923B99D48D485F7DE0 /* PreviewGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF02A168A78A7910E31E7A7 /* PreviewGallery.swift */; };
 		6197929BBFBB7883861D8DDA /* LemonApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1FD5B87EDE5DF9A0D2665A /* LemonApp.swift */; };
+		6419CC1B345017DCF79EF95E /* ComboCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D44EBF4DAD4FAB466177B2 /* ComboCatalog.swift */; };
 		75D6116E30FCB10850B197D6 /* ToneSynth.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6892B17895DA20474D9570 /* ToneSynth.swift */; };
 		9C0DC233DB689BB42F8382D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E5D8324B4871D3BC84FC990B /* Assets.xcassets */; };
 		A1DC76D90D9C70E28E32E885 /* ComboCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19026C2C2FC42E02FE1D8F3C /* ComboCatalogTests.swift */; };
@@ -32,6 +33,7 @@
 		4664207D76B18F0D3553859F /* Lemon.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lemon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5629DD627BE3F8FBA3E2F9C8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7DF02A168A78A7910E31E7A7 /* PreviewGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewGallery.swift; sourceTree = "<group>"; };
+		C0D44EBF4DAD4FAB466177B2 /* ComboCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboCatalog.swift; sourceTree = "<group>"; };
 		D45DD3ADD734887C36FDB409 /* LemonTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LemonTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E5D8324B4871D3BC84FC990B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EF6892B17895DA20474D9570 /* ToneSynth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToneSynth.swift; sourceTree = "<group>"; };
@@ -45,6 +47,14 @@
 				CAFF3505D11538E965ADA9E8 /* LemonTests */,
 				C230E45B00110037A3DDAAF8 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		9BC93009E3872EB2056AB2E9 /* Combos */ = {
+			isa = PBXGroup;
+			children = (
+				C0D44EBF4DAD4FAB466177B2 /* ComboCatalog.swift */,
+			);
+			path = Combos;
 			sourceTree = "<group>";
 		};
 		C230E45B00110037A3DDAAF8 /* Products */ = {
@@ -73,6 +83,7 @@
 				2B1FD5B87EDE5DF9A0D2665A /* LemonApp.swift */,
 				7DF02A168A78A7910E31E7A7 /* PreviewGallery.swift */,
 				EF6892B17895DA20474D9570 /* ToneSynth.swift */,
+				9BC93009E3872EB2056AB2E9 /* Combos */,
 			);
 			path = Lemon;
 			sourceTree = "<group>";
@@ -179,6 +190,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6419CC1B345017DCF79EF95E /* ComboCatalog.swift in Sources */,
 				E175D2070CA7B1F2839F9909 /* ContentView.swift in Sources */,
 				6197929BBFBB7883861D8DDA /* LemonApp.swift in Sources */,
 				60D399923B99D48D485F7DE0 /* PreviewGallery.swift in Sources */,

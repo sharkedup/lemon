@@ -4,7 +4,8 @@ How time-gated content — month-long holiday packs (Halloween, Thanksgiving,
 winter, …) and short one-off events alike — gets built, shipped, and unlocked,
 and the refactoring that has to land before the first pack.
 
-Status: agreed in principle, open questions at the bottom.
+Status: agreed in principle. **Phase 1 landed** (see §4); open questions at
+the bottom.
 
 **Keeping this current:** update this doc in the same change that decides one of
 its open questions, changes the `Availability` / `Event` / `Schedule` model, or
@@ -46,6 +47,9 @@ enum Availability {
 
 Content under construction is `.notReady`. When the art and tune land, it
 becomes `.event(.halloween)`. Moving between states is a one-line edit.
+
+As shipped today only `.always` and `.notReady` exist — `.event` arrives with
+the schedules in Phase 2.
 
 `.notReady` wins unconditionally — a draft is never triggerable, even if its id
 somehow already has a discovery flag set.
@@ -136,22 +140,24 @@ everything else.
 
 ## 4. Architecture work
 
-Three phases. **Phase 1 is a blocker for all pack content.**
+Three phases. Phase 1 was the blocker for all pack content; it has landed.
 
-### Phase 1 — unify the combo catalog (blocker)
+### Phase 1 — unify the combo catalog ✅ DONE
 
-Combos are currently defined **twice**:
+Combos used to be defined **twice** — once as real `[InputAction]` sequences in
+`ContentView`, and again as hand-typed emoji strings in `HelpView`, with two
+separate `isEnabled` flags kept in sync by hand. A typo produced a hint that
+lied to the player, and nothing caught it.
 
-- [`ContentView.swift:605`](Lemon/ContentView.swift:605) — `combos`, with real
-  `[InputAction]` sequences
-- [`ContentView.swift:1934`](Lemon/ContentView.swift:1934) — `hints`, with the
-  same sequences hand-typed as emoji strings
+Both are now [`Lemon/Combos/ComboCatalog.swift`](Lemon/Combos/ComboCatalog.swift):
+`ComboDefinition` holds the sequence once, and `hintSteps` derives the help
+page's arrows from it. A snapshot test proves the derived strings reproduce the
+shipped ones byte for byte.
 
-Same ids, same order, two separate `isEnabled` flags kept in sync by hand. A
-typo produces a hint that lies to the player, and nothing catches it. Four packs
-would double the exposure.
+`Availability` replaced `isEnabled` with `.always` / `.notReady`; Phase 2 adds
+the `.event(Event)` case below.
 
-Replace both with one registry:
+The shape that landed:
 
 ```swift
 struct ComboDefinition {
@@ -175,8 +181,8 @@ Daisy's double-twirl):
 - first `.twirl` → `"then Twirl!"`
 - any subsequent `.twirl` → `"Twirl again!"`
 
-Both `ContentView` and `HelpView` then read the same array. The sequence exists
-in exactly one place.
+`ContentView` and `HelpView` both read `ComboCatalog.available`. The sequence
+exists in exactly one place. **Nothing outstanding — Phase 2 can start whenever.**
 
 ### Phase 2 — schedules and clock
 
