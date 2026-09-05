@@ -884,13 +884,13 @@ struct ContentView: View {
     var lemonCharacter: some View {
         ZStack {
             characterBody(form: currentForm)
+                .rotationEffect(.degrees(moveRotation + twirlRotation))
 
             if showBabyLemon {
                 babyLemonCompanion
             }
         }
         .offset(moveOffset)
-        .rotationEffect(.degrees(moveRotation + twirlRotation))
         .scaleEffect(moveScale)
     }
 
@@ -1260,6 +1260,7 @@ struct ContentView: View {
     /// this view is a child inside `lemonCharacter`'s transformed group.
     private var babyLemonCompanion: some View {
         characterBody(form: currentForm)
+            .rotationEffect(.degrees(moveRotation + twirlRotation))
             .scaleEffect(0.34)
             .offset(x: 95, y: 78)
     }
