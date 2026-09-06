@@ -46,6 +46,7 @@ breaks a link Apple requires.
 - The add-a-form touch points change (e.g. the combo catalog refactor lands)
 - The release pipeline changes — a new step, or a new place a version lives
 - A new App Store asset requirement or rejection gotcha is discovered
+- The art or shape-design workflow changes
 - A convention changes
 
 **Update `SEASONAL_STRATEGY.md` when:**
@@ -126,7 +127,7 @@ shape uses.
 4. `name` switch case
 5. `Tune` static array + `tune` switch case
 6. `bannerText` switch case
-7. Custom `Shape` struct(s) if needed
+7. Custom `Shape` struct(s) if needed — design them in SVG first, see below
 8. `characterBody` branch — and add to the nub/leaf exclusion chain if it
    shouldn't get the default lemon stem
 9. `ComboDefinition` entry in `ComboCatalog` — id, emoji, name, sequence, kind,
@@ -145,6 +146,59 @@ shape uses.
 
 **Currently shelved**: `singleSingleDoubleDouble`, `ruby`, `marble`,
 `lemonShark`, `runner`
+
+---
+
+## Designing a new shape
+
+**Draw it in SVG first. Do not iterate on geometry by rebuilding the app.**
+
+A rebuild-and-screenshot cycle is about three minutes; an SVG render is about
+five seconds. The speed matters less than the fact that bad directions can be
+found and thrown away *before* anyone else has to look at them — the soccer ball
+took four iterations and a full geometry rewrite this way, after failing over six
+rebuild cycles the other way.
+
+### The loop
+
+1. Agree a spec first (below).
+2. Generate a **grid of 4–6 variants** as one SVG, drawn on the real body
+   silhouette with a stand-in face.
+3. Rasterise and look at it:
+   ```
+   qlmanage -t -s 1100 -o . variants.svg     # writes variants.svg.png
+   ```
+   `qlmanage` scales to fit the *larger* dimension, so keep the canvas roughly
+   square or the right-hand column gets cropped.
+4. Discard the duds yourself, iterate, and only then send a sheet for a pick.
+5. Port the chosen one to a `Shape`, then verify in the simulator — the port is
+   the step where errors creep in, not the drawing.
+
+The body silhouette, matching `LemonShape` on the 260 x 220 frame:
+
+```
+M 130,0 C 221,0 260,44 260,110 C 260,176 221,220 130,220
+        C 39,220 0,176 0,110 C 0,44 39,0 130,0 Z
+```
+
+Because decoration layers are given that same 260 x 220 frame, SVG coordinates
+port across directly — use `rect.midX`/`midY` as the centre and keep the radii.
+
+### The spec, before any drawing
+
+- **Reference** — an image, or a named real-world thing
+- **Structure** — the geometry in words
+- **Must not read as** — the one that earns its keep. Cartoon shapes fail by
+  accidentally resembling something else, and that is invisible until someone
+  says it. "Not a spider" would have killed two soccer ball attempts on sight.
+- **Overlay or body** — does it replace the silhouette or sit on top
+
+### When panels have to meet
+
+Build every panel from **one shared set of vertices** so adjoining panels use
+the same corner points. Regular pentagons and hexagons do not tile a flat plane;
+drawing them independently and hoping they line up leaves slivers and crossed
+seams. See `SoccerPanelsShape`.
 
 ---
 
