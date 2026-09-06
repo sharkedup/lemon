@@ -298,6 +298,90 @@ struct PumpkinStemShape: Shape {
     }
 }
 
+/// The ghost's silhouette: a domed head over slightly bowed walls, closing
+/// with a scalloped hem.
+///
+/// The hem is a `sin²` wave rather than a chain of arcs, so each bump meets
+/// the baseline tangentially and the cusps between them come out smooth.
+/// Arcs butted together give sharp points, which read as tentacles.
+struct GhostShape: Shape {
+    private let lobes = 4.0
+    private let hemAmplitude: CGFloat = 18
+    private let steps = 140
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func at(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + rect.width * x, y: rect.minY + rect.height * y)
+        }
+        let scale = rect.height / 220
+        let hemY = at(0, 168 / 220).y
+        let wallY = at(0, 92 / 220).y
+        let left = at(20 / 260, 0).x, right = at(240 / 260, 0).x
+        let bulge = 4 * rect.width / 260
+
+        path.move(to: CGPoint(x: left, y: wallY))
+        path.addCurve(to: at(0.5, 10 / 220),
+                      control1: CGPoint(x: left, y: at(0, 28 / 220).y),
+                      control2: at(58 / 260, 10 / 220))
+        path.addCurve(to: CGPoint(x: right, y: wallY),
+                      control1: at(202 / 260, 10 / 220),
+                      control2: CGPoint(x: right, y: at(0, 28 / 220).y))
+        path.addCurve(to: CGPoint(x: right, y: hemY),
+                      control1: CGPoint(x: right + bulge, y: wallY + 28 * scale),
+                      control2: CGPoint(x: right + bulge, y: hemY - 28 * scale))
+
+        for i in 0...steps {
+            let u = 1 - Double(i) / Double(steps)
+            let x = left + (right - left) * u
+            let y = hemY + hemAmplitude * scale * pow(sin(.pi * lobes * u), 2)
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
+
+        path.addCurve(to: CGPoint(x: left, y: wallY),
+                      control1: CGPoint(x: left - bulge, y: hemY - 28 * scale),
+                      control2: CGPoint(x: left - bulge, y: wallY + 28 * scale))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// One loop of the ghost's bow, mirrored for the other side.
+struct GhostBowLoopShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func at(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + rect.width * x, y: rect.minY + rect.height * y)
+        }
+        path.move(to: at(0.90, 0.42))
+        path.addCurve(to: at(0.05, 0.40), control1: at(0.46, 0.00), control2: at(0.0, 0.06))
+        path.addCurve(to: at(0.90, 0.70), control1: at(0.10, 0.86), control2: at(0.60, 0.84))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Two tall oval eyes, or closed curves when asleep. The smile is stroked
+/// separately so it stays an open arc.
+struct GhostEyesShape: Shape {
+    let isAwake: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let cx = rect.midX, cy = rect.midY
+        for sign in [-1.0, 1.0] {
+            if isAwake {
+                path.addEllipse(in: CGRect(x: cx + sign * 28 - 12, y: cy - 40, width: 24, height: 36))
+            } else {
+                path.addRoundedRect(
+                    in: CGRect(x: cx + sign * 28 - 13, y: cy - 26, width: 26, height: 5),
+                    cornerSize: CGSize(width: 2.5, height: 2.5))
+            }
+        }
+        return path
+    }
+}
+
 enum DanceDirection: CaseIterable, Equatable {
     case up, down, left, right
 
@@ -483,12 +567,14 @@ enum Tune {
     static let soccerBall: [Double] = [440.00, 440.00, 587.33, 523.25, 698.46, 587.33]
     /// Minor and a little spooky, resolving up so it still feels friendly.
     static let jackOLantern: [Double] = [349.23, 415.30, 466.16, 349.23, 466.16, 587.33]
+    /// Airy whole-tone drift — wavering rather than spooky.
+    static let ghost: [Double] = [440.00, 493.88, 554.37, 622.25, 554.37, 622.25]
 }
 
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
     case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple, coolLemon, tennisBall, daisy, soccerBall
-    case jackOLantern
+    case jackOLantern, ghost
 
     var bodyColors: (light: Color, dark: Color, stroke: Color) {
         switch self {
@@ -529,6 +615,9 @@ enum Fruit: Equatable {
             // Rich golden center; the white petals are drawn separately in
             // `daisyPetals`.
             return (Color(red: 1.0, green: 0.82, blue: 0.15), Color(red: 0.92, green: 0.65, blue: 0.05), Color(red: 0.62, green: 0.42, blue: 0.04))
+        case .ghost:
+            // Barely-there white with a cool grey outline.
+            return (Color(red: 0.99, green: 0.99, blue: 1.0), Color(red: 0.92, green: 0.93, blue: 0.96), Color(red: 0.30, green: 0.33, blue: 0.39))
         case .jackOLantern:
             // Warm pumpkin orange; the ribs and carved face are drawn over it.
             return (Color(red: 0.98, green: 0.71, blue: 0.42), Color(red: 0.94, green: 0.57, blue: 0.25), Color(red: 0.77, green: 0.42, blue: 0.16))
@@ -556,6 +645,8 @@ enum Fruit: Equatable {
     var isDaisy: Bool { self == .daisy }
     var isSoccerBall: Bool { self == .soccerBall }
     var isJackOLantern: Bool { self == .jackOLantern }
+    /// Floats, so it is the one form drawn without arms or legs.
+    var isGhost: Bool { self == .ghost }
 
     var name: String {
         switch self {
@@ -577,6 +668,7 @@ enum Fruit: Equatable {
         case .daisy: return "Daisy"
         case .soccerBall: return "Soccer Ball"
         case .jackOLantern: return "Jack-o'-Lantern"
+        case .ghost: return "Ghost"
         }
     }
 
@@ -601,6 +693,7 @@ enum Fruit: Equatable {
         case .daisy: return Tune.daisy
         case .soccerBall: return Tune.soccerBall
         case .jackOLantern: return Tune.jackOLantern
+        case .ghost: return Tune.ghost
         }
     }
 
@@ -624,6 +717,7 @@ enum Fruit: Equatable {
         case .daisy: return "🌼 DAISY! 🌼"
         case .soccerBall: return "⚽ SOCCER BALL! ⚽"
         case .jackOLantern: return "🎃 JACK-O\'-LANTERN! 🎃"
+        case .ghost: return "👻 BOO! 👻"
         }
     }
 }
@@ -836,7 +930,14 @@ struct ContentView: View {
     /// forms added later.
     private func characterBody(form: Fruit) -> some View {
         let colors = form.bodyColors
-        let bodyShape: AnyShape = form.isPitcher ? AnyShape(PitcherShape()) : AnyShape(LemonShape())
+        let bodyShape: AnyShape
+        if form.isPitcher {
+            bodyShape = AnyShape(PitcherShape())
+        } else if form.isGhost {
+            bodyShape = AnyShape(GhostShape())
+        } else {
+            bodyShape = AnyShape(LemonShape())
+        }
 
         return ZStack {
             // Behind the body so the handle's joints are hidden by the wall.
@@ -892,6 +993,8 @@ struct ContentView: View {
 
             if form.isJackOLantern {
                 pumpkinCarvedFace
+            } else if form.isGhost {
+                ghostFace
             } else {
                 face(
                     yOffset: form.isDonut ? -34 : -10,
@@ -926,6 +1029,8 @@ struct ContentView: View {
                 // The pentagon pattern is the identifying detail — no nub/leaf.
             } else if form.isJackOLantern {
                 pumpkinStem
+            } else if form.isGhost {
+                ghostBow
             } else {
                 if form.isApple {
                     stem(colors: colors)
@@ -958,9 +1063,11 @@ struct ContentView: View {
 
             // Daisy's arms/legs are green (matching the leaf) rather than
             // the golden center's own stroke color.
-            let limbColors = form.isDaisy ? (light: colors.light, dark: colors.dark, stroke: Color(red: 0.36, green: 0.62, blue: 0.24)) : colors
-            arms(colors: limbColors)
-            legs(colors: limbColors)
+            if !form.isGhost {
+                let limbColors = form.isDaisy ? (light: colors.light, dark: colors.dark, stroke: Color(red: 0.36, green: 0.62, blue: 0.24)) : colors
+                arms(colors: limbColors)
+                legs(colors: limbColors)
+            }
 
             if form.hasRunningShoes {
                 runningShoes
@@ -1027,6 +1134,46 @@ struct ContentView: View {
             .stroke(Color(red: 0.99, green: 0.93, blue: 0.9), style: StrokeStyle(lineWidth: 8, lineCap: .round))
             .frame(width: 260, height: 220)
             .clipShape(bodyShape)
+    }
+
+    private var ghostFace: some View {
+        let ink = Color(red: 0.30, green: 0.33, blue: 0.39)
+        return ZStack {
+            GhostEyesShape(isAwake: isAwake).fill(ink)
+            if isAwake {
+                // Stroked separately so the smile stays an open arc.
+                Path { path in
+                    path.move(to: CGPoint(x: 112, y: 142))
+                    path.addQuadCurve(to: CGPoint(x: 148, y: 142),
+                                      control: CGPoint(x: 130, y: 164))
+                }
+                .stroke(ink, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .frame(width: 260, height: 220)
+            }
+        }
+        .frame(width: 260, height: 220)
+    }
+
+    private var ghostBow: some View {
+        let colors = Fruit.ghost.bodyColors
+        return HStack(spacing: -6) {
+            GhostBowLoopShape()
+                .fill(colors.light)
+                .overlay(GhostBowLoopShape().stroke(colors.stroke, lineWidth: 3))
+                .frame(width: 44, height: 34)
+            GhostBowLoopShape()
+                .fill(colors.light)
+                .overlay(GhostBowLoopShape().stroke(colors.stroke, lineWidth: 3))
+                .frame(width: 44, height: 34)
+                .scaleEffect(x: -1)
+        }
+        .overlay(
+            Circle()
+                .fill(colors.light)
+                .overlay(Circle().stroke(colors.stroke, lineWidth: 3))
+                .frame(width: 18, height: 18)
+        )
+        .offset(y: -104)
     }
 
     /// Ribs and stem give the plain body its pumpkin read; the carved face

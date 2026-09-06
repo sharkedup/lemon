@@ -129,7 +129,9 @@ shape uses.
 6. `bannerText` switch case
 7. Custom `Shape` struct(s) if needed — design them in SVG first, see below
 8. `characterBody` branch — and add to the nub/leaf exclusion chain if it
-   shouldn't get the default lemon stem
+   shouldn't get the default lemon stem. A form with its own silhouette also
+   needs a branch where `bodyShape` is chosen (see `GhostShape`), and one that
+   floats needs the arms/legs call sites skipped (see `isGhost`).
 9. `ComboDefinition` entry in `ComboCatalog` — id, emoji, name, sequence, kind,
    availability. The hint text derives itself; there is nothing to keep in sync.
 10. `PreviewGallery.swift` — both the `allForms` grid array and its own

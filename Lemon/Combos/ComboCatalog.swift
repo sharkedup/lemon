@@ -287,6 +287,15 @@ enum ComboCatalog {
             kind: .transform(.jackOLantern),
             availability: .event(EventCatalog.halloween),
             alwaysRevealed: false
+        ),
+        ComboDefinition(
+            id: "ghost",
+            emoji: "👻",
+            name: "Ghost",
+            sequence: [.direction(.down), .direction(.down), .direction(.left), .direction(.up), .direction(.up), .direction(.right), .twirl],
+            kind: .transform(.ghost),
+            availability: .event(EventCatalog.halloween),
+            alwaysRevealed: false
         )
     ]
 

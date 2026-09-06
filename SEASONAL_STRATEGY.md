@@ -187,9 +187,9 @@ Shipped: `Schedule`, `Event`, `EventClock`, `EventCatalog`, the `.event`
 case on `Availability`, the reachability rules from §3, `scenePhase`
 recomputation, and the debug panel below.
 
-Proven end to end by the first date-gated combo, `jackOLantern`: hidden from
-the help page on a real September date, and present once the debug panel's
-simulated date is moved into October.
+Proven end to end by the first date-gated combos, `jackOLantern` and `ghost`:
+hidden from the help page on a real September date, and present once the debug
+panel's simulated date is moved into October.
 
 ```swift
 struct MonthDay { let month: Int; let day: Int }
@@ -286,8 +286,8 @@ night of the year it matters.
 
 ### Phase 3 — pack content and the seasonal skin layer
 
-Pack *forms* can be built now — `jackOLantern` is the first, gated to the
-Halloween event. The skin layer below is still outstanding.
+Pack *forms* can be built now — `jackOLantern` and `ghost` are done, both
+gated to the Halloween event. The skin layer below is still outstanding.
 
 Every form gets the seasonal decoration composed over it, with a per-form
 opt-out. This is the only genuinely *new* architecture in this plan — everything
