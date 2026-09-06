@@ -7,15 +7,27 @@ struct DebugPanel: View {
     /// Applied when a form is picked, so the character changes behind the sheet.
     let onPickForm: (Fruit) -> Void
     let onDismiss: () -> Void
+    /// Called after any override is written.
+    ///
+    /// The combo list above this panel is built from `ComboCatalog.reachable()`,
+    /// which reads `EventClock.now()` and `DebugSettings.showsUnfinishedCombos`
+    /// — a closure and a UserDefaults-backed static, neither of them observable
+    /// SwiftUI state. Both live in the same sheet, so without this the list
+    /// would sit there stale until the sheet was closed and reopened, and the
+    /// date gating would look broken to the person previewing it.
+    let onOverridesChanged: () -> Void
 
     @State private var simulatedDate: Date
     @State private var usesSimulatedDate: Bool
     @State private var showsUnfinished: Bool
     @State private var showingFormPicker = false
 
-    init(onPickForm: @escaping (Fruit) -> Void, onDismiss: @escaping () -> Void) {
+    init(onPickForm: @escaping (Fruit) -> Void,
+         onDismiss: @escaping () -> Void,
+         onOverridesChanged: @escaping () -> Void) {
         self.onPickForm = onPickForm
         self.onDismiss = onDismiss
+        self.onOverridesChanged = onOverridesChanged
         let stored = DebugSettings.simulatedDate
         _simulatedDate = State(initialValue: stored ?? Date())
         _usesSimulatedDate = State(initialValue: stored != nil)
@@ -36,6 +48,7 @@ struct DebugPanel: View {
                 .font(.subheadline)
                 .onChange(of: usesSimulatedDate) { _, isOn in
                     DebugSettings.simulatedDate = isOn ? simulatedDate : nil
+                    onOverridesChanged()
                 }
 
             if usesSimulatedDate {
@@ -43,6 +56,7 @@ struct DebugPanel: View {
                     .font(.subheadline)
                     .onChange(of: simulatedDate) { _, newDate in
                         DebugSettings.simulatedDate = newDate
+                        onOverridesChanged()
                     }
             }
 
@@ -50,6 +64,7 @@ struct DebugPanel: View {
                 .font(.subheadline)
                 .onChange(of: showsUnfinished) { _, isOn in
                     DebugSettings.showsUnfinishedCombos = isOn
+                    onOverridesChanged()
                 }
 
             Button {
@@ -64,6 +79,7 @@ struct DebugPanel: View {
                     DebugSettings.clearAll()
                     usesSimulatedDate = false
                     showsUnfinished = false
+                    onOverridesChanged()
                 } label: {
                     Text("Clear all overrides")
                         .font(.subheadline.weight(.semibold))
