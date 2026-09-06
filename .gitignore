@@ -8,3 +8,7 @@ AppStoreScreenshots/
 AppStoreScreenshots65/
 AppStoreScreenshotsIPad13/
 AppStorePreviewVideo/
+
+# Working SVGs, generated from the geometry in ContentView.swift. Derived, so
+# committing them would create a second copy that nothing keeps in sync.
+design/
