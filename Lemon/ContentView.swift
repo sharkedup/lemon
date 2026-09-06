@@ -346,6 +346,82 @@ struct GhostShape: Shape {
     }
 }
 
+/// Where the Spider's six added legs sit. Body-local points on the same
+/// 260 x 220 frame as `LemonShape`, so these are the exact numbers the shape
+/// was drawn with in SVG.
+///
+/// The knee is load-bearing. A smooth curve from body to floor reads as an
+/// octopus, and legs attached low and pointing sideways read as a crab — both
+/// were drawn and thrown away before this geometry.
+enum SpiderLegGeometry {
+    /// The left-hand three; the right-hand three are these mirrored.
+    static let legs: [(attach: CGPoint, knee: CGPoint, foot: CGPoint)] = [
+        (CGPoint(x: 44, y: 42), CGPoint(x: -16, y: -16), CGPoint(x: -46, y: 74)),
+        (CGPoint(x: 24, y: 148), CGPoint(x: -40, y: 140), CGPoint(x: -70, y: 214)),
+        (CGPoint(x: 72, y: 192), CGPoint(x: 30, y: 214), CGPoint(x: 2, y: 268))
+    ]
+
+    /// Both leg shapes are drawn on the same 260 x 220 frame as the body, so
+    /// the numbers above map across from the SVG directly. The legs reach well
+    /// outside that frame and are simply left to overflow it: a `Shape` is not
+    /// clipped to its layout rect, and giving them a bigger frame would grow
+    /// the enclosing `ZStack` and make the character jump on transform.
+    static let bodyFrame = CGSize(width: 260, height: 220)
+
+    static let legWidth: CGFloat = 10
+    static let footRadius: CGFloat = 8
+
+    /// Maps a body-local point into `rect`, which may put it outside `rect`.
+    static func at(_ point: CGPoint, in rect: CGRect) -> CGPoint {
+        CGPoint(x: rect.minX + rect.width * point.x / bodyFrame.width,
+                y: rect.minY + rect.height * point.y / bodyFrame.height)
+    }
+
+    static func mirrored(_ point: CGPoint) -> CGPoint {
+        CGPoint(x: 260 - point.x, y: point.y)
+    }
+}
+
+/// The Spider's six legs, meant to be stroked. Drawn behind the body so each
+/// leg's attachment point is hidden under the silhouette.
+struct SpiderLegsShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        for leg in SpiderLegGeometry.legs {
+            for isMirrored in [false, true] {
+                func at(_ point: CGPoint) -> CGPoint {
+                    let p = isMirrored ? SpiderLegGeometry.mirrored(point) : point
+                    return SpiderLegGeometry.at(p, in: rect)
+                }
+                path.move(to: at(leg.attach))
+                path.addLine(to: at(leg.knee))
+                path.addLine(to: at(leg.foot))
+            }
+        }
+        return path
+    }
+}
+
+/// The Spider's foot pads, meant to be filled. Kept separate from
+/// `SpiderLegsShape` so the legs can be stroked and the pads filled, while
+/// both read their geometry from the one `SpiderLegGeometry` list.
+struct SpiderFeetShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let radius = SpiderLegGeometry.footRadius * rect.width / SpiderLegGeometry.bodyFrame.width
+        for leg in SpiderLegGeometry.legs {
+            for foot in [leg.foot, SpiderLegGeometry.mirrored(leg.foot)] {
+                let centre = SpiderLegGeometry.at(foot, in: rect)
+                path.addEllipse(in: CGRect(x: centre.x - radius,
+                                           y: centre.y - radius * 0.62,
+                                           width: radius * 2,
+                                           height: radius * 1.24))
+            }
+        }
+        return path
+    }
+}
+
 /// One loop of the ghost's bow, mirrored for the other side.
 struct GhostBowLoopShape: Shape {
     func path(in rect: CGRect) -> Path {
@@ -569,12 +645,14 @@ enum Tune {
     static let jackOLantern: [Double] = [349.23, 415.30, 466.16, 349.23, 466.16, 587.33]
     /// Airy whole-tone drift — wavering rather than spooky.
     static let ghost: [Double] = [440.00, 493.88, 554.37, 622.25, 554.37, 622.25]
+    /// A two-note skitter that lifts at the end — creepy-crawly, then friendly.
+    static let spider: [Double] = [466.16, 523.25, 466.16, 523.25, 622.25, 698.46]
 }
 
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
     case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple, coolLemon, tennisBall, daisy, soccerBall
-    case jackOLantern, ghost
+    case jackOLantern, ghost, spider
 
     var bodyColors: (light: Color, dark: Color, stroke: Color) {
         switch self {
@@ -621,6 +699,11 @@ enum Fruit: Equatable {
         case .jackOLantern:
             // Warm pumpkin orange; the ribs and carved face are drawn over it.
             return (Color(red: 0.98, green: 0.71, blue: 0.42), Color(red: 0.94, green: 0.57, blue: 0.25), Color(red: 0.77, green: 0.42, blue: 0.16))
+        case .spider:
+            // Friendly purple rather than black: it still reads as Halloween,
+            // and the dark face and legs stay legible against it, which they
+            // do not on a near-black body.
+            return (Color(red: 0.49, green: 0.35, blue: 0.66), Color(red: 0.33, green: 0.21, blue: 0.48), Color(red: 0.20, green: 0.13, blue: 0.30))
         case .soccerBall:
             // Off-white panels; the black pentagon pattern is drawn
             // separately in `soccerPattern`.
@@ -647,6 +730,9 @@ enum Fruit: Equatable {
     var isJackOLantern: Bool { self == .jackOLantern }
     /// Floats, so it is the one form drawn without arms or legs.
     var isGhost: Bool { self == .ghost }
+    /// Keeps its arms — they animate, and stand in for the front pair of legs
+    /// — but replaces the usual two legs with its own six.
+    var isSpider: Bool { self == .spider }
 
     var name: String {
         switch self {
@@ -669,6 +755,7 @@ enum Fruit: Equatable {
         case .soccerBall: return "Soccer Ball"
         case .jackOLantern: return "Jack-o'-Lantern"
         case .ghost: return "Ghost"
+        case .spider: return "Spider"
         }
     }
 
@@ -694,6 +781,7 @@ enum Fruit: Equatable {
         case .soccerBall: return Tune.soccerBall
         case .jackOLantern: return Tune.jackOLantern
         case .ghost: return Tune.ghost
+        case .spider: return Tune.spider
         }
     }
 
@@ -718,6 +806,7 @@ enum Fruit: Equatable {
         case .soccerBall: return "⚽ SOCCER BALL! ⚽"
         case .jackOLantern: return "🎃 JACK-O\'-LANTERN! 🎃"
         case .ghost: return "👻 BOO! 👻"
+        case .spider: return "🕷️ CREEPY-CRAWLY! 🕷️"
         }
     }
 }
@@ -949,6 +1038,12 @@ struct ContentView: View {
                 daisyPetals
             }
 
+            // Behind the body so each leg's attachment point is hidden under
+            // the silhouette.
+            if form.isSpider {
+                spiderLegs(colors: colors)
+            }
+
             if form.isPitcher {
                 pitcherGlassBody(colors: colors, bodyShape: bodyShape)
             } else if form.isDonut {
@@ -1031,6 +1126,8 @@ struct ContentView: View {
                 pumpkinStem
             } else if form.isGhost {
                 ghostBow
+            } else if form.isSpider {
+                spiderSilk(colors: colors)
             } else {
                 if form.isApple {
                     stem(colors: colors)
@@ -1066,7 +1163,11 @@ struct ContentView: View {
             if !form.isGhost {
                 let limbColors = form.isDaisy ? (light: colors.light, dark: colors.dark, stroke: Color(red: 0.36, green: 0.62, blue: 0.24)) : colors
                 arms(colors: limbColors)
-                legs(colors: limbColors)
+                // Spider keeps its arms, which animate, but its own six legs
+                // stand in for the usual pair.
+                if !form.isSpider {
+                    legs(colors: limbColors)
+                }
             }
 
             if form.hasRunningShoes {
@@ -1174,6 +1275,33 @@ struct ContentView: View {
                 .frame(width: 18, height: 18)
         )
         .offset(y: -104)
+    }
+
+    /// The six added legs. The character's own arms stay, and animate, as the
+    /// front pair, so it reads as eight limbs in total.
+    private func spiderLegs(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        ZStack {
+            SpiderLegsShape()
+                .stroke(colors.stroke,
+                        style: StrokeStyle(lineWidth: SpiderLegGeometry.legWidth,
+                                           lineCap: .round,
+                                           lineJoin: .round))
+            SpiderFeetShape()
+                .fill(colors.stroke)
+        }
+        .frame(width: SpiderLegGeometry.bodyFrame.width,
+               height: SpiderLegGeometry.bodyFrame.height)
+    }
+
+    /// A single thread of silk running up off the top of the body — the
+    /// cheapest "this is a spider" signal there is, and it fills the same slot
+    /// the nub and leaf occupy on every other form. Sized so its lower end
+    /// stops exactly on the body's top edge.
+    private func spiderSilk(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        Capsule()
+            .fill(colors.stroke)
+            .frame(width: 3, height: 80)
+            .offset(y: -150)
     }
 
     /// Ribs and stem give the plain body its pumpkin read; the carved face

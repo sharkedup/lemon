@@ -296,6 +296,17 @@ enum ComboCatalog {
             kind: .transform(.ghost),
             availability: .event(EventCatalog.halloween),
             alwaysRevealed: false
+        ),
+        // Deliberately the mirror of Jack-o'-Lantern's spiral, so a player who
+        // has found one has a decent shot at guessing the other.
+        ComboDefinition(
+            id: "spider",
+            emoji: "🕷️",
+            name: "Spider",
+            sequence: [.direction(.up), .direction(.right), .direction(.down), .direction(.left), .direction(.up), .direction(.right), .twirl],
+            kind: .transform(.spider),
+            availability: .event(EventCatalog.halloween),
+            alwaysRevealed: false
         )
     ]
 

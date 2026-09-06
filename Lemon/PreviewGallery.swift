@@ -15,7 +15,8 @@ import SwiftUI
 private let allForms: [Fruit] = [
     .lemon, .clementine, .lime, .lemonadePitcher,
     .singleSingleDoubleDouble, .ruby, .marble, .lemonShark,
-    .runner, .princess, .donut, .apple, .greenApple, .coolLemon, .tennisBall, .daisy, .soccerBall, .jackOLantern, .ghost
+    .runner, .princess, .donut, .apple, .greenApple, .coolLemon, .tennisBall, .daisy, .soccerBall, .jackOLantern, .ghost,
+    .spider
 ]
 
 /// A small helper so a `Fruit` case can be dropped into a `.frame(...)`-sized
@@ -159,6 +160,13 @@ private struct FormCell: View {
     ContentView(previewForm: .ghost, previewAwake: true)
         .lemonCharacter
         .frame(width: 420, height: 420)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+}
+
+#Preview("Spider — Detail") {
+    ContentView(previewForm: .spider, previewAwake: true)
+        .lemonCharacter
+        .frame(width: 460, height: 460)
         .background(Color(red: 0.98, green: 0.98, blue: 0.92))
 }
 
@@ -334,5 +342,17 @@ private struct PointGrid: View {
         PointGrid(extent: 160, step: 20)
     }
     .frame(width: 320, height: 320)
+    .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+}
+
+/// Blue point grid over the Spider, for reading/editing the attach, knee and
+/// foot points in `SpiderLegGeometry.legs`. The grid is centred on the body,
+/// so a point reads directly as body-local minus (130, 110).
+#Preview("Grid — Spider Legs") {
+    ZStack {
+        ContentView(previewForm: .spider, previewAwake: true).lemonCharacter
+        PointGrid(extent: 220, step: 20)
+    }
+    .frame(width: 480, height: 480)
     .background(Color(red: 0.98, green: 0.98, blue: 0.92))
 }

@@ -89,7 +89,8 @@ struct FormPicker: View {
     private let forms: [Fruit] = [
         .lemon, .clementine, .lime, .lemonadePitcher, .singleSingleDoubleDouble,
         .ruby, .marble, .lemonShark, .runner, .princess, .donut, .apple,
-        .greenApple, .coolLemon, .tennisBall, .daisy, .soccerBall
+        .greenApple, .coolLemon, .tennisBall, .daisy, .soccerBall,
+        .jackOLantern, .ghost, .spider
     ]
 
     var body: some View {
