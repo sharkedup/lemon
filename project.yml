@@ -16,7 +16,7 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
-        CFBundleShortVersionString: "1.2"
+        CFBundleShortVersionString: "1.3"
         CFBundleVersion: "19"
     settings:
       base:
