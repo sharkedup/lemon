@@ -167,7 +167,7 @@ enum ComboCatalog {
             name: "Ruby",
             sequence: [.direction(.left), .direction(.up), .direction(.right), .direction(.down), .direction(.left), .direction(.up), .direction(.right), .direction(.down)],
             kind: .transform(.ruby),
-            availability: .notReady,
+            availability: .always,
             alwaysRevealed: false
         ),
         ComboDefinition(

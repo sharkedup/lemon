@@ -515,6 +515,418 @@ struct MummyTrailingEndShape: Shape {
     }
 }
 
+/// Tiny deterministic generator (xorshift64), used to scatter Ruby's fur once.
+///
+/// The fur must be baked rather than drawn live: a `Shape` recomputes its path
+/// on every frame, so a live random source would re-scatter the strokes each
+/// frame and make the coat shimmer through the dance animation.
+struct RubySeededRandom {
+    private var state: UInt64
+
+    init(seed: UInt64) {
+        state = seed &* 6364136223846793005 &+ 1442695040888963407
+        if state == 0 { state = 0x9E3779B97F4A7C15 }
+    }
+
+    mutating func unit() -> CGFloat {
+        state ^= state << 13
+        state ^= state >> 7
+        state ^= state << 17
+        return CGFloat(Double(state >> 11) * (1.0 / 9007199254740992.0))
+    }
+
+    mutating func next(in range: ClosedRange<CGFloat>) -> CGFloat {
+        range.lowerBound + unit() * (range.upperBound - range.lowerBound)
+    }
+}
+
+/// One fur stroke, in body-local coordinates on the 260 x 220 frame.
+struct RubyFurStroke {
+    let start: CGPoint
+    let control: CGPoint
+    let end: CGPoint
+}
+
+/// A batch of strokes sharing a line width and opacity, so a whole batch can be
+/// drawn as one `Shape`. Per-stroke width and opacity is what stops the fur
+/// looking mechanical, but a `Shape` strokes uniformly — so the variation is
+/// quantised into four batches per region rather than thrown away.
+struct RubyFurBatch {
+    let strokes: [RubyFurStroke]
+    let width: CGFloat
+    let opacity: Double
+}
+
+/// Where Ruby's fur goes.
+///
+/// Placement is a jittered grid — one stroke per cell, positioned randomly
+/// inside it. Scattering along guide lines instead left the strokes clumped in
+/// bands, and the ones under the muzzle read as a moustache. Every stroke flows
+/// outward from a per-region focus point, which is what gives the coat a grain
+/// rather than looking like scribble.
+enum RubyFurGeometry {
+    private static let widthSteps: [CGFloat] = [0.72, 0.94, 1.16, 1.38]
+    private static let opacitySteps: [Double] = [0.60, 0.86, 1.12, 1.40]
+
+    private static func scatter(
+        _ x0: CGFloat, _ y0: CGFloat, _ x1: CGFloat, _ y1: CGFloat,
+        cols: Int, rows: Int, seed: UInt64,
+        length: CGFloat, width: CGFloat, opacity: Double,
+        focus: CGPoint
+    ) -> [RubyFurBatch] {
+        var rng = RubySeededRandom(seed: seed)
+        var bins = Array(repeating: [RubyFurStroke](), count: widthSteps.count)
+        let cellW = (x1 - x0) / CGFloat(cols)
+        let cellH = (y1 - y0) / CGFloat(rows)
+
+        for row in 0..<rows {
+            for col in 0..<cols {
+                let x = x0 + cellW * (CGFloat(col) + 0.5 + rng.next(in: -0.55...0.55))
+                let y = y0 + cellH * (CGFloat(row) + 0.5 + rng.next(in: -0.55...0.55))
+                let angle = atan2(y - focus.y, x - focus.x)
+                    + rng.next(in: -0.59...0.59)
+                let len = length * rng.next(in: 0.55...1.5)
+                let end = CGPoint(x: x + cos(angle) * len, y: y + sin(angle) * len)
+                let curl = rng.next(in: -0.26...0.26)
+                let control = CGPoint(x: (x + end.x) / 2 - (end.y - y) * curl,
+                                      y: (y + end.y) / 2 + (end.x - x) * curl)
+                let bin = Int(rng.next(in: 0...CGFloat(widthSteps.count) - 0.001))
+                bins[bin].append(RubyFurStroke(start: CGPoint(x: x, y: y),
+                                               control: control, end: end))
+            }
+        }
+
+        return bins.enumerated().compactMap { index, strokes in
+            strokes.isEmpty ? nil
+                : RubyFurBatch(strokes: strokes,
+                               width: width * widthSteps[index],
+                               opacity: opacity * opacitySteps[index])
+        }
+    }
+
+    /// Pale fur over the dark mask. Clipped to the mask *and* the body — the
+    /// mask overhangs the silhouette, so the mask clip alone let strokes escape
+    /// past the top corners.
+    static let crown: [RubyFurBatch] = scatter(
+        2, 2, 258, RubyGeometry.maskEdgeY + 8,
+        cols: 13, rows: 7, seed: 11,
+        length: 15, width: 1.7, opacity: 0.20, focus: CGPoint(x: 130, y: 40))
+
+    /// Darker fur over every light part of her — beard, chest, flanks.
+    static let coat: [RubyFurBatch] = scatter(
+        6, 6, 254, 216,
+        cols: 11, rows: 7, seed: 21,
+        length: 14, width: 1.6, opacity: 0.17, focus: CGPoint(x: 130, y: 96))
+
+    static func ear(side: CGFloat) -> [RubyFurBatch] {
+        let outer = 130 + side * RubyGeometry.earOuter
+        let inner = 130 + side * RubyGeometry.earInner
+        return scatter(
+            min(outer, inner) - 6, 18, max(outer, inner) + 6, RubyGeometry.earLength + 14,
+            cols: 6, rows: 9, seed: side < 0 ? 31 : 32,
+            length: 15, width: 1.7, opacity: 0.26,
+            focus: CGPoint(x: 130 + side * 30, y: 10))
+    }
+
+    static let plume: [RubyFurBatch] = scatter(
+        226, 106, 298, 192,
+        cols: 7, rows: 8, seed: 61,
+        length: 14, width: 1.7, opacity: 0.46, focus: CGPoint(x: 228, y: 192))
+}
+
+/// One batch of Ruby's fur, meant to be stroked.
+struct RubyFurShape: Shape {
+    let batch: RubyFurBatch
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        for stroke in batch.strokes {
+            path.move(to: RubyGeometry.at(stroke.start, in: rect))
+            path.addQuadCurve(to: RubyGeometry.at(stroke.end, in: rect),
+                              control: RubyGeometry.at(stroke.control, in: rect))
+        }
+        return path
+    }
+}
+
+/// Ruby's geometry. Body-local points on the same 260 x 220 frame as
+/// `LemonShape`, so these are the exact numbers she was drawn with in SVG.
+///
+/// Her silhouette is a pear rather than the lemon blob, and that is
+/// load-bearing rather than decorative. Drop ears hang down the sides of the
+/// head, which is exactly where `arms()` attaches at `±118` — on the blob the
+/// two always collided, and every fix that kept the blob made something worse:
+/// narrowing the ears until they cleared the arms cost the ears their own
+/// visible contour, and moving the arms out left them floating unattached.
+/// Narrowing the head and flaring the chest gives the ears a narrow part to
+/// hang from and the arms a wide part to attach to, below them.
+enum RubyGeometry {
+    static let bodyFrame = CGSize(width: 260, height: 220)
+
+    /// Maps a body-local point into `rect`, which may put it outside `rect`.
+    static func at(_ point: CGPoint, in rect: CGRect) -> CGPoint {
+        CGPoint(x: rect.minX + rect.width * point.x / bodyFrame.width,
+                y: rect.minY + rect.height * point.y / bodyFrame.height)
+    }
+
+    /// Where the dark mask's lower edge sits: `mid` at the centre of the face,
+    /// dipping to `edge` at the sides so it runs continuously into the ears.
+    /// An isolated cap around the eyes reads as a panda.
+    static let maskMidY: CGFloat = 96
+    static let maskEdgeY: CGFloat = 132
+
+    /// The white blaze. Without it the dark closes over the crown into a hood,
+    /// and with the eyes sitting inside the dark it read as a panda instead.
+    static let blazeHalfWidth: CGFloat = 18
+    static let blazeBottomY: CGFloat = 110
+    static let blazeFlare: CGFloat = 32
+
+    /// Ear control offsets, as distances *outward* from the centre line, so the
+    /// right ear is the same numbers mirrored. `outer` is a bezier control and
+    /// the curve peaks well short of it — that gap is why fur placed off
+    /// `outer` once landed outside the ear entirely.
+    static let earInnerAttach: CGFloat = 40
+    static let earOuterAttach: CGFloat = 104
+    static let earOuter: CGFloat = 140
+    static let earInner: CGFloat = 65
+    static let earPoof: CGFloat = 14
+    static let earLength: CGFloat = 132
+
+    /// Eyes sit on the dark, between the blaze and the ears' inner edge. The
+    /// clearances are tight on both sides: blaze edge at 112, ear inner edge at
+    /// 65 out, eye radius 15 centred 38 out.
+    static let eyeOffsetX: CGFloat = 38
+    static let eyeY: CGFloat = 86
+    static let eyeRadius: CGFloat = 15
+    static let noseY: CGFloat = 128
+    static let noseHalfWidth: CGFloat = 21
+
+    /// Arms attach lower on Ruby than on every other form — on the chest,
+    /// below the ear tips — which is the whole point of the pear silhouette.
+    static let armYOffset: CGFloat = 64
+}
+
+/// Ruby's body: narrow through the head where the ears hang, flaring to a broad
+/// chest that gives the arms somewhere to attach in the clear.
+struct RubyShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            RubyGeometry.at(CGPoint(x: x, y: y), in: rect)
+        }
+
+        var path = Path()
+        path.move(to: p(130, 4))
+        path.addCurve(to: p(220, 72), control1: p(186, 4), control2: p(214, 30))
+        path.addCurve(to: p(242, 138), control1: p(224, 102), control2: p(232, 122))
+        path.addCurve(to: p(250, 197), control1: p(252, 156), control2: p(257, 180))
+        path.addCurve(to: p(130, 220), control1: p(240, 212), control2: p(196, 220))
+        path.addCurve(to: p(10, 197), control1: p(64, 220), control2: p(20, 212))
+        path.addCurve(to: p(18, 138), control1: p(3, 180), control2: p(8, 156))
+        path.addCurve(to: p(40, 72), control1: p(28, 122), control2: p(36, 102))
+        path.addCurve(to: p(130, 4), control1: p(46, 30), control2: p(74, 4))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// The dark mask over crown, eye area and sides. Meant to be clipped to the
+/// body; it deliberately overhangs the frame so no sliver of light shows at
+/// the top corners.
+struct RubyMaskShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            RubyGeometry.at(CGPoint(x: x, y: y), in: rect)
+        }
+        let mid = RubyGeometry.maskMidY, edge = RubyGeometry.maskEdgeY
+
+        var path = Path()
+        path.move(to: p(-10, -14))
+        path.addLine(to: p(270, -14))
+        path.addLine(to: p(270, edge))
+        path.addCurve(to: p(130, mid), control1: p(214, mid + 16), control2: p(176, mid))
+        path.addCurve(to: p(-10, edge), control1: p(84, mid), control2: p(46, mid + 16))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// The white stripe up the centre of her face, punched through the mask.
+struct RubyBlazeShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            RubyGeometry.at(CGPoint(x: x, y: y), in: rect)
+        }
+        let w = RubyGeometry.blazeHalfWidth
+        let bottom = RubyGeometry.blazeBottomY
+        let flare = RubyGeometry.blazeFlare
+
+        var path = Path()
+        path.move(to: p(130 - w, 12))
+        path.addCurve(to: p(130 + w, 12), control1: p(130 - w, -6), control2: p(130 + w, -6))
+        path.addLine(to: p(130 + w, bottom - 34))
+        path.addCurve(to: p(130 + flare, bottom),
+                      control1: p(130 + w + 3, bottom - 14),
+                      control2: p(130 + flare - 6, bottom - 8))
+        path.addLine(to: p(130 - flare, bottom))
+        path.addCurve(to: p(130 - w, bottom - 34),
+                      control1: p(130 - flare + 6, bottom - 8),
+                      control2: p(130 - w - 3, bottom - 14))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// One drop ear. `side` is -1 for the left ear and 1 for the right.
+///
+/// Not clipped to the body: the ear overflows the 260 x 220 frame the same way
+/// the Spider's legs and the Mummy's trailing bandage do. Giving it a bigger
+/// frame would grow the enclosing `ZStack` and make the character jump on
+/// transform.
+struct RubyEarShape: Shape {
+    let side: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        func p(_ offset: CGFloat, _ y: CGFloat) -> CGPoint {
+            RubyGeometry.at(CGPoint(x: 130 + side * offset, y: y), in: rect)
+        }
+        let ai = RubyGeometry.earInnerAttach
+        let ao = RubyGeometry.earOuterAttach
+        let ow = RubyGeometry.earOuter + RubyGeometry.earPoof
+        let iw = RubyGeometry.earInner
+        let len = RubyGeometry.earLength
+
+        var path = Path()
+        path.move(to: p(ai, 20))
+        path.addCurve(to: p(ao, 44), control1: p(ai + 18, 2), control2: p(ao - 6, 8))
+        // The belly of the ear: bowing the outer edge out at mid-height is what
+        // reads as fluffy rather than as a hanging slab.
+        path.addCurve(to: p(ow - RubyGeometry.earPoof - 10, len),
+                      control1: p(ow, len * 0.36),
+                      control2: p(ow, len * 0.70))
+        path.addQuadCurve(to: p(iw, len - 16), control: p(ai + (ao - ai) * 0.55, len + 20))
+        path.addCurve(to: p(ai, 20), control1: p(iw - 5, len * 0.55), control2: p(ai - 2, 62))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Ruby's plume tail, as overlapping feather clumps along a bowed centreline.
+///
+/// Drawn as lobes rather than one tapered outline because a single silhouette
+/// cannot suggest feathering: a scalloped fan read as a sawblade and a smooth
+/// taper read as a fish fin. Each lobe is drawn twice — once oversized in the
+/// outline colour, then in the fill colour on top — which hides the seams where
+/// the lobes meet without needing a real union.
+enum RubyPlumeGeometry {
+    static let base = CGPoint(x: 230, y: 178)
+    static let tip = CGPoint(x: 286, y: 116)
+    static let control = CGPoint(x: 272, y: 170)
+    static let count = 8
+    static let width: CGFloat = 23
+    static let taper: CGFloat = 0.62
+
+    /// (centre, radii, rotation in degrees) for each clump.
+    static let lobes: [(center: CGPoint, size: CGSize, angle: Double)] = {
+        var rng = RubySeededRandom(seed: 5)
+        return (0..<count).map { i in
+            let t = (CGFloat(i) + 0.5) / CGFloat(count)
+            let u = 1 - t
+            let x = u * u * base.x + 2 * u * t * control.x + t * t * tip.x
+            let y = u * u * base.y + 2 * u * t * control.y + t * t * tip.y
+            let dx = 2 * u * (control.x - base.x) + 2 * t * (tip.x - control.x)
+            let dy = 2 * u * (control.y - base.y) + 2 * t * (tip.y - control.y)
+            let w = width
+                * (0.42 + 0.78 * sin(.pi * (0.18 + 0.82 * t)))
+                * pow(taper, t)
+                * rng.next(in: 0.80...1.22)
+            return (CGPoint(x: x, y: y),
+                    CGSize(width: w * 1.30, height: w),
+                    atan2(dy, dx) * 180 / .pi)
+        }
+    }()
+}
+
+/// The plume's outline, as the union of its clumps. Used to clip fur to the
+/// tail; the tail itself is drawn as individual lobes so the seams can be
+/// hidden under an oversized outline pass.
+struct RubyPlumeShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let scale = rect.width / RubyGeometry.bodyFrame.width
+        for lobe in RubyPlumeGeometry.lobes {
+            let center = RubyGeometry.at(lobe.center, in: rect)
+            let box = CGRect(x: -lobe.size.width * scale, y: -lobe.size.height * scale,
+                             width: lobe.size.width * 2 * scale,
+                             height: lobe.size.height * 2 * scale)
+            let transform = CGAffineTransform(translationX: center.x, y: center.y)
+                .rotated(by: lobe.angle * .pi / 180)
+            path.addEllipse(in: box, transform: transform)
+        }
+        return path
+    }
+}
+
+/// Ruby's nose. Sits in the horizontal gap between her eyes and directly above
+/// the muzzle line, so it collides with neither.
+struct RubyNoseShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            RubyGeometry.at(CGPoint(x: x, y: y), in: rect)
+        }
+        let y = RubyGeometry.noseY, w = RubyGeometry.noseHalfWidth
+
+        var path = Path()
+        path.move(to: p(130, y + w * 0.95))
+        path.addCurve(to: p(130, y - w * 0.52),
+                      control1: p(130 - w, y + w * 0.30),
+                      control2: p(130 - w, y - w * 0.52))
+        path.addCurve(to: p(130, y + w * 0.95),
+                      control1: p(130 + w, y - w * 0.52),
+                      control2: p(130 + w, y + w * 0.30))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// The philtrum line under the nose and the mouth below it, meant to be stroked.
+struct RubyMuzzleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            RubyGeometry.at(CGPoint(x: x, y: y), in: rect)
+        }
+        let y = RubyGeometry.noseY, w = RubyGeometry.noseHalfWidth
+
+        var path = Path()
+        path.move(to: p(130, y + w * 0.95))
+        path.addLine(to: p(130, y + w * 1.5))
+
+        path.move(to: p(108, y + w * 1.5))
+        path.addCurve(to: p(130, y + w * 1.72),
+                      control1: p(116, y + w * 2.1),
+                      control2: p(125, y + w * 2.2))
+        path.addCurve(to: p(152, y + w * 1.5),
+                      control1: p(135, y + w * 2.2),
+                      control2: p(144, y + w * 2.1))
+        return path
+    }
+}
+
+extension Fruit {
+    /// Ruby's palette. Her black cannot come from `bodyColors.dark`, which also
+    /// fills the body gradient's outer stop and the paws — darkening that turned
+    /// her body and feet black too, which read as a cow rather than a Havanese.
+    static let rubyDark = Color(red: 0.137, green: 0.129, blue: 0.157)
+    static let rubyBlaze = Color(red: 0.988, green: 0.980, blue: 0.965)
+    static let rubyFurLight = Color(red: 0.725, green: 0.698, blue: 0.651)
+    static let rubyFurDark = Color(red: 0.337, green: 0.322, blue: 0.361)
+    static let rubyNose = Color(red: 0.102, green: 0.094, blue: 0.110)
+    static let rubyIris = Color(red: 0.541, green: 0.353, blue: 0.169)
+    static let rubyPupil = Color(red: 0.078, green: 0.071, blue: 0.086)
+    /// Her limbs are pale like her real legs, rather than the dark
+    /// `colors.stroke` every other form uses.
+    static let rubyLimb = Color(red: 0.788, green: 0.761, blue: 0.714)
+}
+
 /// One loop of the ghost's bow, mirrored for the other side.
 struct GhostBowLoopShape: Shape {
     func path(in rect: CGRect) -> Path {
@@ -763,8 +1175,10 @@ enum Fruit: Equatable {
             // fill instead, so the vessel itself reads as clear glass.
             return (Color(red: 0.93, green: 0.97, blue: 0.99), Color(red: 0.80, green: 0.90, blue: 0.94), Color(red: 0.53, green: 0.64, blue: 0.68))
         case .ruby:
-            // Gray-and-white, matching Ruby's shaggy coat.
-            return (Color(red: 0.97, green: 0.96, blue: 0.94), Color(red: 0.55, green: 0.55, blue: 0.58), Color(red: 0.35, green: 0.35, blue: 0.38))
+            // Cream, near-white. Her black lives in the mask and ears as its own
+            // colour — see `Fruit.rubyDark` — because `dark` here also fills the
+            // body gradient's outer stop and the paws.
+            return (Color(red: 0.980, green: 0.969, blue: 0.941), Color(red: 0.922, green: 0.902, blue: 0.863), Color(red: 0.420, green: 0.396, blue: 0.376))
         case .marble:
             // Black-and-white tuxedo coloring, matching Marble's markings.
             return (Color(red: 0.98, green: 0.98, blue: 0.98), Color(red: 0.15, green: 0.15, blue: 0.17), Color(red: 0.1, green: 0.1, blue: 0.12))
@@ -1131,6 +1545,8 @@ struct ContentView: View {
             bodyShape = AnyShape(PitcherShape())
         } else if form.isGhost {
             bodyShape = AnyShape(GhostShape())
+        } else if form.isDog {
+            bodyShape = AnyShape(RubyShape())
         } else {
             bodyShape = AnyShape(LemonShape())
         }
@@ -1155,6 +1571,12 @@ struct ContentView: View {
             // the wrap rather than floating alongside it.
             if form.isMummy {
                 mummyTrailingEnd
+            }
+
+            // Behind the body for the same reason: the plume should emerge from
+            // under her rather than sit beside her.
+            if form.isDog {
+                rubyPlume(colors: colors)
             }
 
             if form.isPitcher {
@@ -1183,7 +1605,8 @@ struct ContentView: View {
                     )
 
                 if form.isDog {
-                    dogFacePatch(bodyShape: bodyShape)
+                    rubyCoat(bodyShape: bodyShape)
+                    rubyCoatFur(bodyShape: bodyShape)
                 } else if form.isCat {
                     catFacePatch(bodyShape: bodyShape)
                 } else if form.hasPrincessDress {
@@ -1205,6 +1628,8 @@ struct ContentView: View {
                 pumpkinCarvedFace
             } else if form.isGhost {
                 ghostFace
+            } else if form.isDog {
+                dogFace
             } else {
                 face(
                     yOffset: form.isDonut ? -34 : -10,
@@ -1223,7 +1648,7 @@ struct ContentView: View {
             }
 
             if form.isDog {
-                dogEars(colors: colors)
+                rubyEars(colors: colors)
             } else if form.isCat {
                 catEars
             } else if form.isPitcher {
@@ -1278,8 +1703,15 @@ struct ContentView: View {
             // Daisy's arms/legs are green (matching the leaf) rather than
             // the golden center's own stroke color.
             if !form.isGhost {
-                let limbColors = form.isDaisy ? (light: colors.light, dark: colors.dark, stroke: Color(red: 0.36, green: 0.62, blue: 0.24)) : colors
-                arms(colors: limbColors)
+                // Ruby's are pale like her real legs. They only ever sit on her
+                // cream chest — the pear silhouette keeps them clear of the ears
+                // — so they need no outline to stay legible.
+                let limbStroke = form.isDaisy ? Color(red: 0.36, green: 0.62, blue: 0.24)
+                    : (form.isDog ? Fruit.rubyLimb : colors.stroke)
+                let limbColors = (light: colors.light, dark: colors.dark, stroke: limbStroke)
+                // Ruby stands on her hind legs, so her arms attach low on the
+                // chest, below the ear tips. That is what the pear body is for.
+                arms(colors: limbColors, yOffset: form.isDog ? RubyGeometry.armYOffset : -8)
                 // Spider keeps its arms, which animate, but its own six legs
                 // stand in for the usual pair.
                 if !form.isSpider {
@@ -1566,28 +1998,133 @@ struct ContentView: View {
             .clipShape(bodyShape)
     }
 
-    private func dogFacePatch(bodyShape: AnyShape) -> some View {
-        Ellipse()
-            .fill(Color(red: 0.55, green: 0.55, blue: 0.58))
-            .frame(width: 150, height: 170)
-            .offset(x: -55, y: -35)
-            .frame(width: 260, height: 220)
+    /// Strokes one region's fur batches in `color`.
+    private func rubyFur(_ batches: [RubyFurBatch], color: Color) -> some View {
+        ZStack {
+            ForEach(Array(batches.enumerated()), id: \.offset) { _, batch in
+                RubyFurShape(batch: batch)
+                    .stroke(color.opacity(batch.opacity),
+                            style: StrokeStyle(lineWidth: batch.width, lineCap: .round))
+            }
+        }
+        .frame(width: 260, height: 220)
+    }
+
+    /// Ruby's markings: the dark mask, the white blaze punched through it, and
+    /// fur over both. Clipped to the body silhouette.
+    private func rubyCoat(bodyShape: AnyShape) -> some View {
+        ZStack {
+            RubyMaskShape().fill(Fruit.rubyDark)
+            RubyBlazeShape().fill(Fruit.rubyBlaze)
+            rubyFur(RubyFurGeometry.crown, color: Fruit.rubyFurLight)
+                .clipShape(RubyMaskShape())
+        }
+        .frame(width: 260, height: 220)
+        .clipShape(bodyShape)
+    }
+
+    /// Fur over the light parts of her — beard, chest, flanks. Drawn after the
+    /// coat so it lands on the blaze and body but is masked off the black,
+    /// where the paler crown fur does that job instead.
+    private func rubyCoatFur(bodyShape: AnyShape) -> some View {
+        rubyFur(RubyFurGeometry.coat, color: Fruit.rubyFurDark)
+            .mask(
+                ZStack {
+                    Rectangle().fill(Color.white)
+                    RubyMaskShape().fill(Color.black).blendMode(.destinationOut)
+                    RubyBlazeShape().fill(Color.white)
+                }
+                .compositingGroup()
+                .frame(width: 260, height: 220)
+            )
             .clipShape(bodyShape)
     }
 
-    private func dogEars(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+    private func rubyEars(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
         ZStack {
-            Ellipse()
-                .fill(colors.dark)
-                .frame(width: 52, height: 92)
-                .rotationEffect(.degrees(-18))
-                .offset(x: -112, y: -66)
-            Ellipse()
-                .fill(colors.dark)
-                .frame(width: 52, height: 92)
-                .rotationEffect(.degrees(18))
-                .offset(x: 112, y: -66)
+            ForEach([-1.0, 1.0], id: \.self) { side in
+                ZStack {
+                    RubyEarShape(side: side).fill(Fruit.rubyDark)
+                    rubyFur(RubyFurGeometry.ear(side: side), color: Fruit.rubyFurLight)
+                        .clipShape(RubyEarShape(side: side))
+                }
+            }
         }
+        .frame(width: 260, height: 220)
+    }
+
+    /// Her tail. Each clump is drawn twice — oversized in the outline colour,
+    /// then in the fill colour — so the overlapping lobes show no seams.
+    private func rubyPlume(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+        ZStack {
+            plumeLobes(grow: 2.5, color: colors.stroke)
+            plumeLobes(grow: 0, color: colors.light)
+            rubyFur(RubyFurGeometry.plume, color: Fruit.rubyFurLight)
+                .clipShape(RubyPlumeShape())
+        }
+        .frame(width: 260, height: 220)
+    }
+
+    private func plumeLobes(grow: CGFloat, color: Color) -> some View {
+        GeometryReader { proxy in
+            let rect = CGRect(origin: .zero, size: proxy.size)
+            let scale = rect.width / RubyGeometry.bodyFrame.width
+            ZStack {
+                ForEach(Array(RubyPlumeGeometry.lobes.enumerated()), id: \.offset) { _, lobe in
+                    Ellipse()
+                        .fill(color)
+                        .frame(width: (lobe.size.width + grow) * 2 * scale,
+                               height: (lobe.size.height + grow) * 2 * scale)
+                        .rotationEffect(.degrees(lobe.angle))
+                        .position(RubyGeometry.at(lobe.center, in: rect))
+                }
+            }
+        }
+        .frame(width: 260, height: 220)
+    }
+
+    /// Ruby's own face. The shared `face()` cannot be used: her eyes sit on the
+    /// black mask, where plain dark circles disappear. The amber iris and the
+    /// catchlight are what make them read.
+    private var dogFace: some View {
+        let ex = RubyGeometry.eyeOffsetX
+        let ey = RubyGeometry.eyeY
+        let r = RubyGeometry.eyeRadius
+        let ny = RubyGeometry.noseY
+        let nw = RubyGeometry.noseHalfWidth
+
+        return ZStack {
+            ForEach([-1.0, 1.0], id: \.self) { side in
+                let cx = 130 + side * ex
+                Group {
+                    if isAwake {
+                        Circle().fill(Fruit.rubyPupil).frame(width: r * 2, height: r * 2)
+                        Circle().fill(Fruit.rubyIris).frame(width: r * 1.72, height: r * 1.72)
+                        Circle().fill(Fruit.rubyPupil).frame(width: r * 1.24, height: r * 1.24)
+                        Circle().fill(.white).frame(width: r * 0.48, height: r * 0.48)
+                            .offset(x: -r * 0.30, y: -r * 0.34)
+                        Circle().fill(.white.opacity(0.9))
+                            .frame(width: r * 0.26, height: r * 0.26)
+                            .offset(x: r * 0.30, y: r * 0.10)
+                    } else {
+                        // Asleep: a closed lid, light enough to read on the mask.
+                        Capsule().fill(Fruit.rubyFurLight)
+                            .frame(width: r * 1.8, height: 3)
+                    }
+                }
+                .offset(x: cx - 130, y: ey - 110)
+            }
+
+            RubyNoseShape().fill(Fruit.rubyNose)
+                .frame(width: 260, height: 220)
+            RubyMuzzleShape().stroke(Fruit.rubyNose,
+                                     style: StrokeStyle(lineWidth: 3.2, lineCap: .round))
+                .frame(width: 260, height: 220)
+            Ellipse().fill(.white.opacity(0.35))
+                .frame(width: nw * 0.32, height: nw * 0.22)
+                .offset(x: -nw * 0.34, y: ny - nw * 0.24 - 110)
+        }
+        .frame(width: 260, height: 220)
     }
 
     /// Black mask with a white blaze down the middle, clipped to the body silhouette.
@@ -2057,12 +2594,13 @@ struct ContentView: View {
         }
     }
 
-    private func arms(colors: (light: Color, dark: Color, stroke: Color)) -> some View {
+    private func arms(colors: (light: Color, dark: Color, stroke: Color),
+                      yOffset: CGFloat = -8) -> some View {
         ZStack {
             arm(angle: leftArmAngle, forearmAngle: leftForearmAngle, side: -1, colors: colors)
-                .offset(x: -118, y: -8)
+                .offset(x: -118, y: yOffset)
             arm(angle: rightArmAngle, forearmAngle: rightForearmAngle, side: 1, colors: colors)
-                .offset(x: 118, y: -8)
+                .offset(x: 118, y: yOffset)
         }
     }
 

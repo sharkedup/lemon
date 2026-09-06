@@ -17,17 +17,23 @@ The policy is moving out of this repo so this repo can go **private**. The new
 public home is `sharkedup/lemon-privacy`, already live and verified at
 <https://sharkedup.github.io/lemon-privacy/>.
 
-**State as of 2026-09-05:** version 1.2 has been **approved and released** —
-confirmed when the 1.2 pre-release train closed to new builds. The Privacy
-Policy URL has **not** been changed yet; the listing still points at
-`sharkedup.github.io/lemon/`, which keeps working while this repo stays public.
+**State as of 2026-09-06:** version 1.2 is **approved and released**, and
+build 21 is on TestFlight. The Privacy Policy URL has **not** been changed yet;
+the listing still points at `sharkedup.github.io/lemon/`, which keeps working
+while this repo stays public.
+
+**Decided 2026-09-06:** the URL swap rides along with the **next App Store
+submission** rather than being done on its own. Nothing here is urgent until
+that submission is being prepared — don't treat step 2 as outstanding work in
+the meantime.
 
 Remaining, in order:
 
 1. ~~Wait for the in-review build to be approved.~~ Done.
-2. Update the **Privacy Policy URL** in App Store Connect → App Information.
-   Check the **Support URL** too — if it points at this repo or the old Pages
-   site, it breaks the same way.
+2. Update the **Privacy Policy URL** in App Store Connect → App Information,
+   as part of preparing the next App Store submission. Check the **Support
+   URL** too — if it points at this repo or the old Pages site, it breaks the
+   same way.
 3. Load both URLs in a browser and confirm they resolve.
 4. Flip this repo private.
 5. Delete `docs/`, drop its row from the layout table, fix the "public" note in
@@ -112,6 +118,17 @@ for edits inside existing files.
   suffix of it. Guarded by a test.
 - **`ComboDiscovery`** — UserDefaults-backed discovery and hint-reveal counts.
 - **`Tune`** — per-form frequency arrays.
+- **`RubyGeometry` / `RubyFurGeometry`** — Ruby is the most customised form:
+  her own silhouette, her own face (`dogFace` — plain dark eyes vanish against
+  her black mask), and procedural fur. Her body-local points live in
+  `RubyGeometry` on the same 260 x 220 frame as `LemonShape`, the way
+  `SpiderLegGeometry` does. Her black is `Fruit.rubyDark`, deliberately *not*
+  `bodyColors.dark`, which also fills the body gradient's outer stop and the
+  paws — darkening that turned her body and feet black too.
+- **Baked randomness**: `RubyFurGeometry` scatters her fur once through a
+  seeded `RubySeededRandom` into `static let`s. A `Shape` recomputes its path
+  every frame, so a live random source there would re-scatter the fur each
+  frame and shimmer during the dance.
 
 Custom `Shape` structs use one of two coordinate styles: the `fraction(_:_:_:)`
 helper, or polar/trig from `rect.midX`/`midY`. Match whichever the neighbouring
@@ -130,8 +147,11 @@ shape uses.
 7. Custom `Shape` struct(s) if needed — design them in SVG first, see below
 8. `characterBody` branch — and add to the nub/leaf exclusion chain if it
    shouldn't get the default lemon stem. A form with its own silhouette also
-   needs a branch where `bodyShape` is chosen (see `GhostShape`), and one that
-   floats needs the arms/legs call sites skipped (see `isGhost`).
+   needs a branch where `bodyShape` is chosen (see `GhostShape`, `RubyShape`),
+   and one that floats needs the arms/legs call sites skipped (see `isGhost`).
+   Limbs have two per-form escapes at that call site: a `stroke` override for
+   their colour (Daisy, Ruby) and `arms(yOffset:)` for where they attach — Ruby
+   attaches hers low on the chest so they clear her ears.
 9. `ComboDefinition` entry in `ComboCatalog` — id, emoji, name, sequence, kind,
    availability. The hint text derives itself; there is nothing to keep in sync.
 10. `PreviewGallery.swift` — both the `allForms` grid array and its own
@@ -146,8 +166,8 @@ shape uses.
 - Shelving beats deleting: set `availability: .notReady` and leave the art,
   tune and `PreviewGallery` entry in place.
 
-**Currently shelved**: `singleSingleDoubleDouble`, `ruby`, `marble`,
-`lemonShark`, `runner`
+**Currently shelved**: `singleSingleDoubleDouble`, `marble`, `lemonShark`,
+`runner`
 
 ---
 

@@ -7,7 +7,7 @@ import SwiftUI
 // and tweaked live in Xcode's Canvas (Editor > Canvas, or ⌥⌘↩) instead of
 // rebuilding and walking through combos in the Simulator every time.
 //
-// Edit any decoration view in ContentView.swift (dogEars, catFacePatch,
+// Edit any decoration view in ContentView.swift (rubyEars, catFacePatch,
 // sharkFin, LemonShape's path, colors in Fruit.bodyColors, etc.) with Canvas
 // open and pinned to one of the previews below — it updates in a second or
 // two, live, with no build.
@@ -330,9 +330,11 @@ private struct PointGrid: View {
     .background(Color(red: 0.98, green: 0.98, blue: 0.92))
 }
 
-/// Blue point grid over Ruby, for reading/editing `dogEars` and
-/// `dogFacePatch`'s `.offset(x:y:)` values.
-#Preview("Grid — Ruby Offsets") {
+/// Blue point grid over Ruby. Unlike the other grid previews this is not for
+/// reading `.offset(x:y:)` values — her parts are positioned by body-local
+/// points in `RubyGeometry`, on the same 260 x 220 frame as `LemonShape`. The
+/// grid is here to check those numbers land where they should.
+#Preview("Grid — Ruby Geometry") {
     ZStack {
         ContentView(previewForm: .ruby, previewAwake: true).lemonCharacter
         PointGrid(extent: 160, step: 20)
