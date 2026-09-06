@@ -2318,7 +2318,11 @@ struct HelpView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    @State private var discoveryRefresh = false
+    /// Toggled to force the combo list to recompute. `ComboCatalog.reachable()`
+    /// depends on things SwiftUI cannot see — the hint and discovery counts in
+    /// UserDefaults, the clock, and the debug overrides — so nothing here
+    /// invalidates on its own.
+    @State private var listRefresh = false
     @State private var showResetConfirmation = false
 
     /// The revealed steps followed by a "❔" placeholder for each step the
@@ -2363,7 +2367,7 @@ struct HelpView: View {
                                     if !revealed {
                                         Button {
                                             ComboDiscovery.revealNextHint(hint.id, total: hint.pressCount)
-                                            discoveryRefresh.toggle()
+                                            listRefresh.toggle()
                                         } label: {
                                             Text("💡 Hint (\(hintCount)/\(hint.pressCount))")
                                                 .font(.caption.weight(.bold))
@@ -2378,7 +2382,7 @@ struct HelpView: View {
                             }
                         }
                     }
-                    .id(discoveryRefresh)
+                    .id(listRefresh)
 
                     Button(role: .destructive) {
                         showResetConfirmation = true
@@ -2391,7 +2395,8 @@ struct HelpView: View {
                     if DebugSettings.isAvailable {
                         DebugPanel(
                             onPickForm: onPickForm,
-                            onDismiss: { dismiss() }
+                            onDismiss: { dismiss() },
+                            onOverridesChanged: { listRefresh.toggle() }
                         )
                     }
                 }
@@ -2409,7 +2414,7 @@ struct HelpView: View {
             // SwiftUI will not re-render just because the clock crossed into
             // an event's window, so recompute when the app comes forward.
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { discoveryRefresh.toggle() }
+                if phase == .active { listRefresh.toggle() }
             }
             .confirmationDialog(
                 "Forget every combo you've found?",
@@ -2420,7 +2425,7 @@ struct HelpView: View {
                     for hint in ComboCatalog.all where !hint.alwaysRevealed {
                         ComboDiscovery.reset(hint.id)
                     }
-                    discoveryRefresh.toggle()
+                    listRefresh.toggle()
                 }
                 Button("Cancel", role: .cancel) {}
             }
