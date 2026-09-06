@@ -163,7 +163,7 @@ rebuild cycles the other way.
 
 ### The loop
 
-1. Agree a spec first (below).
+1. Work through the intake questions (below), one at a time.
 2. Generate a **grid of 4–6 variants** as one SVG, drawn on the real body
    silhouette with a stand-in face.
 3. Rasterise and look at it:
@@ -186,14 +186,30 @@ M 130,0 C 221,0 260,44 260,110 C 260,176 221,220 130,220
 Because decoration layers are given that same 260 x 220 frame, SVG coordinates
 port across directly — use `rect.midX`/`midY` as the centre and keep the radii.
 
-### The spec, before any drawing
+### The intake questions
 
-- **Reference** — an image, or a named real-world thing
-- **Structure** — the geometry in words
-- **Must not read as** — the one that earns its keep. Cartoon shapes fail by
-  accidentally resembling something else, and that is invisible until someone
-  says it. "Not a spider" would have killed two soccer ball attempts on sight.
-- **Overlay or body** — does it replace the silhouette or sit on top
+When a new form is announced, ask these **one at a time, waiting for each
+answer** — not as a block. Skip any the user has already answered; several
+usually arrive with the initial request.
+
+1. **Reference** — "What should it look like? Paste an image, or name the
+   real-world thing." Structure usually comes with it; ask for the geometry in
+   words only if the reference is ambiguous.
+2. **Must not read as** — "What would it be a failure to accidentally
+   resemble?" The highest-value question of the set. Cartoon shapes fail by
+   resembling something unintended, and that is invisible until someone says
+   it. "Not a spider" would have killed two soccer ball attempts on sight, and
+   "cute, not scary" shaped every jack-o'-lantern decision.
+3. **Overlay or body** — pattern on the standard blob, or its own silhouette?
+   The cheap path versus the expensive one. Offer it as a choice, with the cost
+   difference stated.
+4. **Arms and legs** — keep both, or does the form float or otherwise not want
+   them? Only the ghost has needed "neither" so far, but it is invisible until
+   asked.
+5. **Availability** — evergreen, or gated to an event?
+
+Propose answers for 3–5 rather than asking cold; they are usually inferable
+from context, and a suggestion is faster to correct than a blank question.
 
 ### When panels have to meet
 
