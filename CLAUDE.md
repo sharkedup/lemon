@@ -94,7 +94,7 @@ for edits inside existing files.
   form works on the baby companion for free.
 - **`ComboDefinition`** / `ComboCatalog` — every combo, defined once. The help
   page's arrow strings are **derived** from `sequence` via `hintSteps`, so a
-  hint cannot drift from what the game accepts. `ComboCatalog.available` is
+  hint cannot drift from what the game accepts. `ComboCatalog.reachable()` is
   what both matching and the help page read.
 - **`Availability`** — `.always`, `.event(Event)`, or `.notReady`. Replaced the
   old `isEnabled` flag.
@@ -144,7 +144,7 @@ shape uses.
   tune and `PreviewGallery` entry in place.
 
 **Currently shelved**: `singleSingleDoubleDouble`, `ruby`, `marble`,
-`lemonShark`, `runner`, `soccerBall`
+`lemonShark`, `runner`
 
 ---
 

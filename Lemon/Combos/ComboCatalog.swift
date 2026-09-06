@@ -269,14 +269,13 @@ enum ComboCatalog {
             availability: .always,
             alwaysRevealed: false
         ),
-        // Shelved: the panel pattern isn't right yet — revisit later.
         ComboDefinition(
             id: "soccerBall",
             emoji: "⚽",
             name: "Soccer Ball",
             sequence: [.direction(.down), .direction(.up), .direction(.left), .direction(.right), .direction(.down), .direction(.up), .twirl],
             kind: .transform(.soccerBall),
-            availability: .notReady,
+            availability: .always,
             alwaysRevealed: false
         )
     ]

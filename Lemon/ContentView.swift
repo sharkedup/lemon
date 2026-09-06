@@ -141,59 +141,81 @@ struct TennisSeamShape: Shape {
     }
 }
 
-/// A regular, point-up pentagon — the central patch of a soccer ball.
-struct PentagonShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let radius = min(rect.width, rect.height) * 0.16
+/// The soccer ball's panel layout.
+///
+/// Every panel is built from one shared set of vertices, so adjoining panels
+/// use the *same* corner points and their edges match by construction. Regular
+/// pentagons and hexagons cannot tile a flat plane — drawing them independently
+/// and hoping they meet leaves slivers and crossed seams.
+///
+/// Sized for the 260 x 220 body frame, like the other decoration layers.
+struct SoccerPanelsShape: Shape {
+    enum Panels {
+        /// The five light panels ringing the centre. Stroked, not filled, so
+        /// the body's own gradient shows through them.
+        case light
+        /// The dark wedges between them, running past the body edge to be
+        /// clipped into partial panels.
+        case dark
+        /// The dark pentagon at the centre, which the face sits on.
+        case centre
+    }
 
-        for i in 0..<5 {
-            let angle = Angle(degrees: -90 + Double(i) * 72).radians
-            let point = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
-            if i == 0 {
-                path.move(to: point)
-            } else {
-                path.addLine(to: point)
+    let panels: Panels
+
+    private let centreRadius: CGFloat = 54
+    private let spokeRadius: CGFloat = 92
+    private let ringRadius: CGFloat = 130
+    private let outerRadius: CGFloat = 210
+    private let spread: Double = 15
+    private let rimSpread: Double = 40
+
+    func path(in rect: CGRect) -> Path {
+        let mid = CGPoint(x: rect.midX, y: rect.midY)
+        let angles = (0..<5).map { -90 + 72 * Double($0) }
+        let corners = angles.map { point(mid, centreRadius, $0) }
+        let spokes = angles.map { point(mid, spokeRadius, $0) }
+
+        var path = Path()
+        switch panels {
+        case .light:
+            for i in 0..<5 {
+                let j = (i + 1) % 5
+                let centreLine = angles[i] + 36
+                add(&path, [
+                    corners[i], corners[j], spokes[j],
+                    point(mid, ringRadius, centreLine + spread),
+                    point(mid, ringRadius, centreLine - spread),
+                    spokes[i]
+                ])
             }
+        case .dark:
+            for i in 0..<5 {
+                let previous = (i + 4) % 5
+                add(&path, [
+                    spokes[i],
+                    point(mid, ringRadius, angles[i] + 36 - spread),
+                    point(mid, outerRadius, angles[i] + rimSpread),
+                    point(mid, outerRadius, angles[i] - rimSpread),
+                    point(mid, ringRadius, angles[previous] + 36 + spread)
+                ])
+            }
+        case .centre:
+            add(&path, corners)
         }
+        return path
+    }
+
+    private func point(_ origin: CGPoint, _ radius: CGFloat, _ degrees: Double) -> CGPoint {
+        let radians = Angle(degrees: degrees).radians
+        return CGPoint(x: origin.x + radius * cos(radians), y: origin.y + radius * sin(radians))
+    }
+
+    private func add(_ path: inout Path, _ points: [CGPoint]) {
+        guard let first = points.first else { return }
+        path.move(to: first)
+        for point in points.dropFirst() { path.addLine(to: point) }
         path.closeSubpath()
-        return path
-    }
-}
-
-/// Thin seam lines connecting the nearest corners of adjoining panels —
-/// two from the central pentagon out to each surrounding panel, and one
-/// between each pair of neighboring panels — so the pattern reads as one
-/// stitched ball rather than separate floating shapes. Computed once for
-/// the panel at -54° and rotated by 72° steps for the other four, matching
-/// the layout's 5-fold symmetry.
-struct SoccerLinksShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let baseSegments: [(CGPoint, CGPoint)] = [
-            (CGPoint(x: 0, y: -48), CGPoint(x: 10.19, y: -62.02)),
-            (CGPoint(x: 45.65, y: -14.83), CGPoint(x: 55.84, y: -28.86)),
-            (CGPoint(x: 55.84, y: -28.86), CGPoint(x: 62.14, y: -9.48))
-        ]
-
-        for i in 0..<5 {
-            let rotation = Angle(degrees: Double(i) * 72).radians
-            for (a, b) in baseSegments {
-                let ra = rotated(a, by: rotation)
-                let rb = rotated(b, by: rotation)
-                path.move(to: CGPoint(x: center.x + ra.x, y: center.y + ra.y))
-                path.addLine(to: CGPoint(x: center.x + rb.x, y: center.y + rb.y))
-            }
-        }
-        return path
-    }
-
-    private func rotated(_ point: CGPoint, by radians: Double) -> CGPoint {
-        let cosA = cos(radians)
-        let sinA = sin(radians)
-        return CGPoint(x: point.x * cosA - point.y * sinA, y: point.x * sinA + point.y * cosA)
     }
 }
 
@@ -910,31 +932,25 @@ struct ContentView: View {
             .clipShape(bodyShape)
     }
 
-    /// A central black pentagon surrounded by six touching panels — the
-    /// classic soccer ball pattern, clipped to the body silhouette.
+    /// The classic black-and-white panelling, clipped to the body silhouette.
     private func soccerPattern(bodyShape: AnyShape) -> some View {
         let panelColor = Color(red: 0.14, green: 0.14, blue: 0.16)
-        // Placed at the center pentagon's edge-midpoint angles so each
-        // rotated petal nestles against a flat edge instead of a vertex.
-        let petalAngles: [Double] = [-54, 18, 90, 162, 234]
+        let seam = StrokeStyle(lineWidth: 3.5, lineJoin: .round)
 
         return ZStack {
-            SoccerLinksShape()
-                .stroke(panelColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                .frame(width: 260, height: 220)
-            PentagonShape()
+            // Light panels are outlined rather than filled, so the body's
+            // gradient reads through them and they still show their shape.
+            SoccerPanelsShape(panels: .light)
+                .stroke(panelColor, style: seam)
+            SoccerPanelsShape(panels: .dark)
                 .fill(panelColor)
-                .frame(width: 300, height: 300)
-            ForEach(Array(petalAngles.enumerated()), id: \.offset) { _, angle in
-                let radians = Angle(degrees: angle).radians
-                PentagonShape()
-                    .fill(panelColor)
-                    .frame(width: 300, height: 300)
-                    .rotationEffect(.degrees(180))
-                    .offset(x: 95 * cos(radians), y: 95 * sin(radians))
-            }
+            SoccerPanelsShape(panels: .dark)
+                .stroke(panelColor, style: seam)
+            SoccerPanelsShape(panels: .centre)
+                .fill(panelColor)
+            SoccerPanelsShape(panels: .centre)
+                .stroke(panelColor, style: seam)
         }
-        .offset(y: -12)
         .frame(width: 260, height: 220)
         .clipShape(bodyShape)
     }

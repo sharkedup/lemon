@@ -48,9 +48,6 @@ enum Availability {
 Content under construction is `.notReady`. When the art and tune land, it
 becomes `.event(.halloween)`. Moving between states is a one-line edit.
 
-As shipped today only `.always` and `.notReady` exist — `.event` arrives with
-the schedules in Phase 2.
-
 `.notReady` wins unconditionally — a draft is never triggerable, even if its id
 somehow already has a discovery flag set.
 
@@ -87,7 +84,7 @@ struct Event {
 
 These stay `.notReady` indefinitely and are **not** seasonal candidates:
 
-`singleSingleDoubleDouble`, `ruby`, `marble`, `lemonShark`, `runner`, `soccerBall`
+`singleSingleDoubleDouble`, `ruby`, `marble`, `lemonShark`, `runner`
 
 They keep their code, art, tunes, and `PreviewGallery` entries. Seasonal packs
 are built from new forms.
@@ -181,7 +178,7 @@ Daisy's double-twirl):
 - first `.twirl` → `"then Twirl!"`
 - any subsequent `.twirl` → `"Twirl again!"`
 
-`ContentView` and `HelpView` both read `ComboCatalog.available`. The sequence
+`ContentView` and `HelpView` both read the one catalog. The sequence
 exists in exactly one place. **Nothing outstanding — Phase 2 can start whenever.**
 
 ### Phase 2 — schedules and clock ✅ DONE
