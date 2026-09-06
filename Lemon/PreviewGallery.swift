@@ -16,7 +16,7 @@ private let allForms: [Fruit] = [
     .lemon, .clementine, .lime, .lemonadePitcher,
     .singleSingleDoubleDouble, .ruby, .marble, .lemonShark,
     .runner, .princess, .donut, .apple, .greenApple, .coolLemon, .tennisBall, .daisy, .soccerBall, .jackOLantern, .ghost,
-    .spider
+    .spider, .mummy
 ]
 
 /// A small helper so a `Fruit` case can be dropped into a `.frame(...)`-sized
@@ -160,6 +160,13 @@ private struct FormCell: View {
     ContentView(previewForm: .ghost, previewAwake: true)
         .lemonCharacter
         .frame(width: 420, height: 420)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+}
+
+#Preview("Mummy — Detail") {
+    ContentView(previewForm: .mummy, previewAwake: true)
+        .lemonCharacter
+        .frame(width: 460, height: 460)
         .background(Color(red: 0.98, green: 0.98, blue: 0.92))
 }
 

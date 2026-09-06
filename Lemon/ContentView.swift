@@ -422,6 +422,99 @@ struct SpiderFeetShape: Shape {
     }
 }
 
+/// Where the Mummy's bandage strips sit. Each strip is a line across the same
+/// 260 x 220 frame as `LemonShape` plus the width it is drawn at, so these are
+/// the exact numbers the wrap was drawn with in SVG.
+///
+/// The uneven widths are load-bearing. Evenly spaced strips of one width read
+/// as a beach ball rather than a wrapping — that version was drawn and thrown
+/// away. So is the staggering: each strip stops short of the far edge, on
+/// alternating sides, so its end stays visible inside the silhouette. Visible
+/// ends are what say "wrapped" rather than "striped".
+enum MummyWrapGeometry {
+    struct Strip {
+        let from: CGPoint
+        let to: CGPoint
+        let width: CGFloat
+    }
+
+    /// Drawn in order, so a later strip laps over the one before it.
+    static let strips: [Strip] = [
+        Strip(from: CGPoint(x: -20, y: 8), to: CGPoint(x: 215, y: 0), width: 42),
+        Strip(from: CGPoint(x: 60, y: 34), to: CGPoint(x: 290, y: 40), width: 20),
+        Strip(from: CGPoint(x: -20, y: 60), to: CGPoint(x: 225, y: 68), width: 34),
+        Strip(from: CGPoint(x: 45, y: 88), to: CGPoint(x: 290, y: 82), width: 18),
+        Strip(from: CGPoint(x: -20, y: 118), to: CGPoint(x: 200, y: 126), width: 38),
+        Strip(from: CGPoint(x: 70, y: 150), to: CGPoint(x: 290, y: 144), width: 22),
+        Strip(from: CGPoint(x: -20, y: 182), to: CGPoint(x: 235, y: 190), width: 44),
+        Strip(from: CGPoint(x: 40, y: 216), to: CGPoint(x: 290, y: 222), width: 24)
+    ]
+
+    static let bodyFrame = CGSize(width: 260, height: 220)
+
+    static func at(_ point: CGPoint, in rect: CGRect) -> CGPoint {
+        CGPoint(x: rect.minX + rect.width * point.x / bodyFrame.width,
+                y: rect.minY + rect.height * point.y / bodyFrame.height)
+    }
+
+    static func scale(in rect: CGRect) -> CGFloat { rect.width / bodyFrame.width }
+}
+
+/// One bandage strip, as a quad. The caller fills and strokes each strip in
+/// turn rather than filling them all and then stroking them all: drawn the
+/// second way, every fill lands on top of the edges beneath it and the seams
+/// between adjoining strips disappear.
+struct MummyStripShape: Shape {
+    let strip: MummyWrapGeometry.Strip
+
+    func path(in rect: CGRect) -> Path {
+        let start = MummyWrapGeometry.at(strip.from, in: rect)
+        let end = MummyWrapGeometry.at(strip.to, in: rect)
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let length = max(sqrt(dx * dx + dy * dy), 0.001)
+
+        // Perpendicular to the strip, half its width long.
+        let half = strip.width * MummyWrapGeometry.scale(in: rect) / 2
+        let px = -dy / length * half
+        let py = dx / length * half
+
+        var path = Path()
+        path.move(to: CGPoint(x: start.x + px, y: start.y + py))
+        path.addLine(to: CGPoint(x: end.x + px, y: end.y + py))
+        path.addLine(to: CGPoint(x: end.x - px, y: end.y - py))
+        path.addLine(to: CGPoint(x: start.x - px, y: start.y - py))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// The one loose bandage, trailing from the Mummy's hip. Drawn past the edge
+/// of the 260 x 220 frame on purpose and left unclipped — a `Shape` is not
+/// clipped to its layout rect, and giving it a bigger frame would grow the
+/// enclosing `ZStack` and make the character jump on transform, the same
+/// reason the Spider's legs overflow.
+///
+/// The root runs well inside the silhouette, to around x 172-180, because this
+/// is drawn *behind* the body: the blob's right edge is only at x ~222 by this
+/// height, so a root that started at the visible edge left the ribbon floating
+/// beside the character instead of coming out from under the wrap.
+struct MummyTrailingEndShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            MummyWrapGeometry.at(CGPoint(x: x, y: y), in: rect)
+        }
+
+        var path = Path()
+        path.move(to: p(180, 190))
+        path.addCurve(to: p(298, 232), control1: p(232, 194), control2: p(280, 210))
+        path.addLine(to: p(282, 244))
+        path.addCurve(to: p(172, 208), control1: p(264, 222), control2: p(226, 208))
+        path.closeSubpath()
+        return path
+    }
+}
+
 /// One loop of the ghost's bow, mirrored for the other side.
 struct GhostBowLoopShape: Shape {
     func path(in rect: CGRect) -> Path {
@@ -647,12 +740,14 @@ enum Tune {
     static let ghost: [Double] = [440.00, 493.88, 554.37, 622.25, 554.37, 622.25]
     /// A two-note skitter that lifts at the end — creepy-crawly, then friendly.
     static let spider: [Double] = [466.16, 523.25, 466.16, 523.25, 622.25, 698.46]
+    /// A slow plod that trips upward at the end — shambling, not menacing.
+    static let mummy: [Double] = [261.63, 293.66, 261.63, 233.08, 261.63, 349.23]
 }
 
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
     case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple, coolLemon, tennisBall, daisy, soccerBall
-    case jackOLantern, ghost, spider
+    case jackOLantern, ghost, spider, mummy
 
     var bodyColors: (light: Color, dark: Color, stroke: Color) {
         switch self {
@@ -704,6 +799,12 @@ enum Fruit: Equatable {
             // and the dark face and legs stay legible against it, which they
             // do not on a near-black body.
             return (Color(red: 0.49, green: 0.35, blue: 0.66), Color(red: 0.33, green: 0.21, blue: 0.48), Color(red: 0.20, green: 0.13, blue: 0.30))
+        case .mummy:
+            // Pale linen. The bandage strips are drawn over this, so it is the
+            // colour that shows in the gaps between them and reads as the
+            // shadow of the wrap. The stroke is dark enough to carry the arms
+            // and legs, which take it unchanged.
+            return (Color(red: 0.91, green: 0.86, blue: 0.76), Color(red: 0.82, green: 0.76, blue: 0.63), Color(red: 0.54, green: 0.46, blue: 0.31))
         case .soccerBall:
             // Off-white panels; the black pentagon pattern is drawn
             // separately in `soccerPattern`.
@@ -733,6 +834,9 @@ enum Fruit: Equatable {
     /// Keeps its arms — they animate, and stand in for the front pair of legs
     /// — but replaces the usual two legs with its own six.
     var isSpider: Bool { self == .spider }
+    /// Wrapped in bandages. Keeps the standard blob and both limb pairs; the
+    /// limbs need no colour override because they already take `colors.stroke`.
+    var isMummy: Bool { self == .mummy }
 
     var name: String {
         switch self {
@@ -756,6 +860,7 @@ enum Fruit: Equatable {
         case .jackOLantern: return "Jack-o'-Lantern"
         case .ghost: return "Ghost"
         case .spider: return "Spider"
+        case .mummy: return "Mummy"
         }
     }
 
@@ -782,6 +887,7 @@ enum Fruit: Equatable {
         case .jackOLantern: return Tune.jackOLantern
         case .ghost: return Tune.ghost
         case .spider: return Tune.spider
+        case .mummy: return Tune.mummy
         }
     }
 
@@ -807,6 +913,7 @@ enum Fruit: Equatable {
         case .jackOLantern: return "🎃 JACK-O\'-LANTERN! 🎃"
         case .ghost: return "👻 BOO! 👻"
         case .spider: return "🕷️ CREEPY-CRAWLY! 🕷️"
+        case .mummy: return "🩹 ALL WRAPPED UP! 🩹"
         }
     }
 }
@@ -1044,6 +1151,12 @@ struct ContentView: View {
                 spiderLegs(colors: colors)
             }
 
+            // Behind the body so the loose end reads as coming out from under
+            // the wrap rather than floating alongside it.
+            if form.isMummy {
+                mummyTrailingEnd
+            }
+
             if form.isPitcher {
                 pitcherGlassBody(colors: colors, bodyShape: bodyShape)
             } else if form.isDonut {
@@ -1083,6 +1196,8 @@ struct ContentView: View {
                     soccerPattern(bodyShape: bodyShape)
                 } else if form.isJackOLantern {
                     pumpkinRibs(bodyShape: bodyShape)
+                } else if form.isMummy {
+                    mummyWrap(bodyShape: bodyShape)
                 }
             }
 
@@ -1128,6 +1243,8 @@ struct ContentView: View {
                 ghostBow
             } else if form.isSpider {
                 spiderSilk(colors: colors)
+            } else if form.isMummy {
+                // The wrap is the identifying detail — no nub/leaf.
             } else {
                 if form.isApple {
                     stem(colors: colors)
@@ -1302,6 +1419,44 @@ struct ContentView: View {
             .fill(colors.stroke)
             .frame(width: 3, height: 80)
             .offset(y: -150)
+    }
+
+    /// The bandage wrap. Each strip is filled and then stroked in turn so that
+    /// a strip's edge lands over the strip below it, which is what reads as
+    /// layered wrapping. Alternating the two linen tones keeps adjoining
+    /// strips distinct where they abut without a gap.
+    private func mummyWrap(bodyShape: AnyShape) -> some View {
+        let linen = Color(red: 0.98, green: 0.96, blue: 0.92)
+        let linenShaded = Color(red: 0.95, green: 0.92, blue: 0.85)
+        let seam = Color(red: 0.69, green: 0.60, blue: 0.45)
+
+        return ZStack {
+            ZStack {
+                ForEach(Array(MummyWrapGeometry.strips.enumerated()), id: \.offset) { index, strip in
+                    MummyStripShape(strip: strip)
+                        .fill(index.isMultiple(of: 2) ? linen : linenShaded)
+                    MummyStripShape(strip: strip)
+                        .stroke(seam, lineWidth: 2.5)
+                }
+            }
+            .frame(width: 260, height: 220)
+            .clipShape(bodyShape)
+        }
+        .frame(width: 260, height: 220)
+    }
+
+    /// The loose bandage trailing from the hip. Drawn behind the body so its
+    /// root is hidden under the silhouette, and left unclipped so the rest of
+    /// it trails past the edge.
+    private var mummyTrailingEnd: some View {
+        ZStack {
+            MummyTrailingEndShape()
+                .fill(Color(red: 0.98, green: 0.96, blue: 0.92))
+            MummyTrailingEndShape()
+                .stroke(Color(red: 0.69, green: 0.60, blue: 0.45),
+                        style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
+        }
+        .frame(width: 260, height: 220)
     }
 
     /// Ribs and stem give the plain body its pumpkin read; the carved face

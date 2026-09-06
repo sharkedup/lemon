@@ -307,6 +307,19 @@ enum ComboCatalog {
             kind: .transform(.spider),
             availability: .event(EventCatalog.halloween),
             alwaysRevealed: false
+        ),
+        // One full turn around the body, then a double-right to pull it tight.
+        // Deliberately not another rotation of the Jack-o'-Lantern spiral the
+        // way the Spider is — four near-identical circles would be unfair to
+        // tell apart.
+        ComboDefinition(
+            id: "mummy",
+            emoji: "🩹",
+            name: "Mummy",
+            sequence: [.direction(.right), .direction(.down), .direction(.left), .direction(.up), .direction(.right), .direction(.right), .twirl],
+            kind: .transform(.mummy),
+            availability: .event(EventCatalog.halloween),
+            alwaysRevealed: false
         )
     ]
 

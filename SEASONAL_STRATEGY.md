@@ -286,8 +286,8 @@ night of the year it matters.
 
 ### Phase 3 — pack content and the seasonal skin layer
 
-Pack *forms* can be built now — `jackOLantern`, `ghost` and `spider` are done,
-all three gated to the Halloween event. The skin layer below is still
+Pack *forms* can be built now — `jackOLantern`, `ghost`, `spider` and `mummy`
+are done, all four gated to the Halloween event. The skin layer below is still
 outstanding.
 
 Every form gets the seasonal decoration composed over it, with a per-form

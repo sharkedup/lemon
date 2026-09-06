@@ -106,7 +106,7 @@ struct FormPicker: View {
         .lemon, .clementine, .lime, .lemonadePitcher, .singleSingleDoubleDouble,
         .ruby, .marble, .lemonShark, .runner, .princess, .donut, .apple,
         .greenApple, .coolLemon, .tennisBall, .daisy, .soccerBall,
-        .jackOLantern, .ghost, .spider
+        .jackOLantern, .ghost, .spider, .mummy
     ]
 
     var body: some View {
