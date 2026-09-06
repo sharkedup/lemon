@@ -15,7 +15,7 @@ import SwiftUI
 private let allForms: [Fruit] = [
     .lemon, .clementine, .lime, .lemonadePitcher,
     .singleSingleDoubleDouble, .ruby, .marble, .lemonShark,
-    .runner, .princess, .donut, .apple, .greenApple, .coolLemon, .tennisBall, .daisy, .soccerBall
+    .runner, .princess, .donut, .apple, .greenApple, .coolLemon, .tennisBall, .daisy, .soccerBall, .jackOLantern
 ]
 
 /// A small helper so a `Fruit` case can be dropped into a `.frame(...)`-sized
@@ -143,6 +143,13 @@ private struct FormCell: View {
 
 #Preview("Soccer Ball — Detail") {
     ContentView(previewForm: .soccerBall, previewAwake: true)
+        .lemonCharacter
+        .frame(width: 420, height: 420)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.92))
+}
+
+#Preview("Jack-o'-Lantern — Detail") {
+    ContentView(previewForm: .jackOLantern, previewAwake: true)
         .lemonCharacter
         .frame(width: 420, height: 420)
         .background(Color(red: 0.98, green: 0.98, blue: 0.92))

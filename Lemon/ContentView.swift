@@ -219,6 +219,85 @@ struct SoccerPanelsShape: Shape {
     }
 }
 
+/// The pumpkin's vertical ribs — four mirrored pairs bowing outward, drawn on
+/// the 260 x 220 body frame and stroked rather than filled.
+struct PumpkinRibsShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let cx = rect.midX, cy = rect.midY
+        for i in 1...4 {
+            for sign in [-1.0, 1.0] {
+                let x = sign * Double(i) * 26
+                let bulge = sign * Double(i) * 9
+                path.move(to: CGPoint(x: cx + x * 0.40, y: cy - 88))
+                path.addCurve(
+                    to: CGPoint(x: cx + x * 0.52, y: cy + 92),
+                    control1: CGPoint(x: cx + x + bulge, y: cy - 40),
+                    control2: CGPoint(x: cx + x + bulge, y: cy + 38)
+                )
+            }
+        }
+        return path
+    }
+}
+
+/// The carved face: triangular eyes and a wide grin with one tooth, or closed
+/// slits when the lemon is asleep. Drawn on the 260 x 220 body frame so it
+/// needs no offsets of its own.
+///
+/// Stroke it with the fill colour and a round line join — that is what softens
+/// the triangle corners, and it is most of what keeps this cute rather than
+/// menacing.
+struct PumpkinFaceShape: Shape {
+    let isAwake: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let cx = rect.midX, cy = rect.midY
+
+        if isAwake {
+            for sign in [-1.0, 1.0] {
+                let ex = cx + sign * 32, ey = cy - 16
+                path.move(to: CGPoint(x: ex, y: ey - 15))
+                path.addLine(to: CGPoint(x: ex - 17, y: ey + 15))
+                path.addLine(to: CGPoint(x: ex + 17, y: ey + 15))
+                path.closeSubpath()
+            }
+            let my = cy + 26
+            path.move(to: CGPoint(x: cx - 54, y: my))
+            path.addQuadCurve(to: CGPoint(x: cx + 54, y: my),
+                              control: CGPoint(x: cx, y: my + 34))
+            path.addLine(to: CGPoint(x: cx + 11, y: my))
+            path.addLine(to: CGPoint(x: cx + 5, y: my + 9))
+            path.addLine(to: CGPoint(x: cx - 1, y: my))
+            path.closeSubpath()
+        } else {
+            for sign in [-1.0, 1.0] {
+                path.addRoundedRect(
+                    in: CGRect(x: cx + sign * 32 - 15, y: cy - 18, width: 30, height: 5),
+                    cornerSize: CGSize(width: 2.5, height: 2.5))
+            }
+            path.addEllipse(in: CGRect(x: cx - 6, y: cy + 26, width: 12, height: 12))
+        }
+        return path
+    }
+}
+
+/// The short curved stem that replaces the lemon's nub and leaf.
+struct PumpkinStemShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func at(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + rect.width * x, y: rect.minY + rect.height * y)
+        }
+        path.move(to: at(0.34, 1.0))
+        path.addCurve(to: at(0.62, 0.05), control1: at(0.16, 0.58), control2: at(0.26, 0.13))
+        path.addCurve(to: at(0.70, 1.0), control1: at(0.50, 0.22), control2: at(0.50, 0.62))
+        path.closeSubpath()
+        return path
+    }
+}
+
 enum DanceDirection: CaseIterable, Equatable {
     case up, down, left, right
 
@@ -402,11 +481,14 @@ enum Tune {
     static let daisy: [Double] = [659.25, 739.99, 830.61, 739.99, 987.77, 880.00]
     /// A punchy, kicking-off riff — Soccer Ball.
     static let soccerBall: [Double] = [440.00, 440.00, 587.33, 523.25, 698.46, 587.33]
+    /// Minor and a little spooky, resolving up so it still feels friendly.
+    static let jackOLantern: [Double] = [349.23, 415.30, 466.16, 349.23, 466.16, 587.33]
 }
 
 enum Fruit: Equatable {
     case lemon, clementine, lime, lemonadePitcher
     case singleSingleDoubleDouble, ruby, marble, lemonShark, runner, princess, donut, apple, greenApple, coolLemon, tennisBall, daisy, soccerBall
+    case jackOLantern
 
     var bodyColors: (light: Color, dark: Color, stroke: Color) {
         switch self {
@@ -447,6 +529,9 @@ enum Fruit: Equatable {
             // Rich golden center; the white petals are drawn separately in
             // `daisyPetals`.
             return (Color(red: 1.0, green: 0.82, blue: 0.15), Color(red: 0.92, green: 0.65, blue: 0.05), Color(red: 0.62, green: 0.42, blue: 0.04))
+        case .jackOLantern:
+            // Warm pumpkin orange; the ribs and carved face are drawn over it.
+            return (Color(red: 0.98, green: 0.71, blue: 0.42), Color(red: 0.94, green: 0.57, blue: 0.25), Color(red: 0.77, green: 0.42, blue: 0.16))
         case .soccerBall:
             // Off-white panels; the black pentagon pattern is drawn
             // separately in `soccerPattern`.
@@ -470,6 +555,7 @@ enum Fruit: Equatable {
     var isTennisBall: Bool { self == .tennisBall }
     var isDaisy: Bool { self == .daisy }
     var isSoccerBall: Bool { self == .soccerBall }
+    var isJackOLantern: Bool { self == .jackOLantern }
 
     var name: String {
         switch self {
@@ -490,6 +576,7 @@ enum Fruit: Equatable {
         case .tennisBall: return "Tennis Ball"
         case .daisy: return "Daisy"
         case .soccerBall: return "Soccer Ball"
+        case .jackOLantern: return "Jack-o'-Lantern"
         }
     }
 
@@ -513,6 +600,7 @@ enum Fruit: Equatable {
         case .tennisBall: return Tune.tennisBall
         case .daisy: return Tune.daisy
         case .soccerBall: return Tune.soccerBall
+        case .jackOLantern: return Tune.jackOLantern
         }
     }
 
@@ -535,6 +623,7 @@ enum Fruit: Equatable {
         case .tennisBall: return "🎾 TENNIS BALL! 🎾"
         case .daisy: return "🌼 DAISY! 🌼"
         case .soccerBall: return "⚽ SOCCER BALL! ⚽"
+        case .jackOLantern: return "🎃 JACK-O\'-LANTERN! 🎃"
         }
     }
 }
@@ -796,13 +885,19 @@ struct ContentView: View {
                     tennisSeams(bodyShape: bodyShape)
                 } else if form.isSoccerBall {
                     soccerPattern(bodyShape: bodyShape)
+                } else if form.isJackOLantern {
+                    pumpkinRibs(bodyShape: bodyShape)
                 }
             }
 
-            face(
-                yOffset: form.isDonut ? -34 : -10,
-                color: form.isSoccerBall ? Color.white : Color(red: 0.35, green: 0.24, blue: 0.05)
-            )
+            if form.isJackOLantern {
+                pumpkinCarvedFace
+            } else {
+                face(
+                    yOffset: form.isDonut ? -34 : -10,
+                    color: form.isSoccerBall ? Color.white : Color(red: 0.35, green: 0.24, blue: 0.05)
+                )
+            }
 
             if form.hasBeard {
                 beardAndMoustache
@@ -829,6 +924,8 @@ struct ContentView: View {
                 // The petal ring already reads as the "top" detail.
             } else if form.isSoccerBall {
                 // The pentagon pattern is the identifying detail — no nub/leaf.
+            } else if form.isJackOLantern {
+                pumpkinStem
             } else {
                 if form.isApple {
                     stem(colors: colors)
@@ -930,6 +1027,39 @@ struct ContentView: View {
             .stroke(Color(red: 0.99, green: 0.93, blue: 0.9), style: StrokeStyle(lineWidth: 8, lineCap: .round))
             .frame(width: 260, height: 220)
             .clipShape(bodyShape)
+    }
+
+    /// Ribs and stem give the plain body its pumpkin read; the carved face
+    /// does the rest.
+    private func pumpkinRibs(bodyShape: AnyShape) -> some View {
+        PumpkinRibsShape()
+            .stroke(Color(red: 0.77, green: 0.42, blue: 0.16).opacity(0.5),
+                    style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+            .frame(width: 260, height: 220)
+            .clipShape(bodyShape)
+    }
+
+    private var pumpkinCarvedFace: some View {
+        let carve = Color(red: 0.16, green: 0.10, blue: 0.07)
+        return PumpkinFaceShape(isAwake: isAwake)
+            .fill(carve)
+            .overlay(
+                PumpkinFaceShape(isAwake: isAwake)
+                    .stroke(carve, style: StrokeStyle(lineWidth: 7, lineJoin: .round))
+            )
+            .frame(width: 260, height: 220)
+    }
+
+    private var pumpkinStem: some View {
+        PumpkinStemShape()
+            .fill(Color(red: 0.56, green: 0.69, blue: 0.33))
+            .overlay(
+                PumpkinStemShape()
+                    .stroke(Color(red: 0.37, green: 0.48, blue: 0.20),
+                            style: StrokeStyle(lineWidth: 3.5, lineJoin: .round))
+            )
+            .frame(width: 34, height: 46)
+            .offset(y: -128)
     }
 
     /// The classic black-and-white panelling, clipped to the body silhouette.

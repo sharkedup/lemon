@@ -53,8 +53,12 @@ final class ComboCatalogTests: XCTestCase {
     /// retyped by hand. They are derived now — this proves the derivation
     /// reproduces what actually shipped, byte for byte.
     func testDerivedHintStepsMatchWhatShipped() {
-        XCTAssertEqual(Set(combos.map(\.id)), Set(legacyHintSteps.keys),
-                       "Catalog no longer lines up with the shipped snapshot.")
+        // Every combo in the snapshot must still exist and still derive the
+        // same text. Combos added since are not in the snapshot and are not
+        // expected to be — this is a "nothing regressed" check, not a census.
+        let ids = Set(combos.map(\.id))
+        XCTAssertEqual(Set(legacyHintSteps.keys).subtracting(ids), [],
+                       "A combo present at the snapshot has disappeared from the catalog.")
 
         for combo in combos {
             guard let expected = legacyHintSteps[combo.id] else { continue }

@@ -277,6 +277,16 @@ enum ComboCatalog {
             kind: .transform(.soccerBall),
             availability: .always,
             alwaysRevealed: false
+        ),
+        // The first date-gated combo: only discoverable in October.
+        ComboDefinition(
+            id: "jackOLantern",
+            emoji: "🎃",
+            name: "Jack-o'-Lantern",
+            sequence: [.direction(.up), .direction(.left), .direction(.down), .direction(.right), .direction(.up), .direction(.left), .twirl],
+            kind: .transform(.jackOLantern),
+            availability: .event(EventCatalog.halloween),
+            alwaysRevealed: false
         )
     ]
 
